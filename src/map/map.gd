@@ -4,6 +4,8 @@ extends Node2D
 
 var arrows: Array[MapArrow] = []
 
+@onready var track_image: Sprite2D = %TrackImage
+
 
 func add_arrow(compcar: CompCar) -> void:
 	var arrow := MapArrow.new()
@@ -53,6 +55,14 @@ func remove_arrows() -> void:
 	for arrow in arrows:
 		arrow.queue_free()
 	arrows.clear()
+
+
+func set_background(track: String) -> void:
+	var track_environment := track.left(2)
+	if track_environment in ["AS", "AU", "BL", "FE", "KY", "RO", "SO", "WE"]:
+		track_image.texture = load("res://src/map/environments/%s.png" % [track_environment])
+	else:
+		track_image.texture = null
 
 
 func unpause() -> void:
