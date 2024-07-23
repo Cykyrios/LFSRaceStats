@@ -57,7 +57,7 @@ func initialize_insim() -> void:
 	init_data.i_name = "GIS Race Stats"
 	init_data.flags |= InSim.InitFlag.ISF_LOCAL | InSim.InitFlag.ISF_MCI
 	init_data.interval = 250
-	insim.initialize(init_data)
+	insim.initialize("127.0.0.1", 29999, init_data)
 
 
 #region InSim callbacks
