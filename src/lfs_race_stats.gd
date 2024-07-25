@@ -63,11 +63,19 @@ func initialize_insim() -> void:
 
 #region InSim callbacks
 func _on_fin_received(packet: InSimFINPacket) -> void:
-	print(packet.get_dictionary())
+	Logger.log_message("PLID %d finished in %s (%d laps, best lap %s)." % [packet.player_id,
+			GISUtils.get_time_string_from_seconds(packet.gis_race_time), packet.laps_done,
+			GISUtils.get_time_string_from_seconds(packet.gis_best_lap)])
 
 
 func _on_flg_received(packet: InSimFLGPacket) -> void:
-	print(packet)
+	var flag_string := ""
+	if packet.flag == 1:
+		flag_string = "Blue flag %s" % ["given to" if packet.off_on else "cleared for"]
+	if packet.flag == 2:
+		flag_string = "Yellow flag %s" % ["caused by" if packet.off_on else "cleared for"]
+	flag_string += " PLID %d (car behind: PLID %d)." % [packet.player_id, packet.car_behind]
+	Logger.log_message(flag_string)
 
 
 func _on_lap_received(packet: InSimLAPPacket) -> void:
@@ -75,6 +83,8 @@ func _on_lap_received(packet: InSimLAPPacket) -> void:
 	if not player:
 		return
 	player.add_lap(packet)
+	Logger.log_message("Lap %d completed by PLID %d: %s" % [packet.laps_done, packet.player_id,
+			GISUtils.get_time_string_from_seconds(packet.gis_lap_time)])
 
 
 func _on_mci_received(packet: InSimMCIPacket) -> void:
@@ -101,11 +111,12 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 
 
 func _on_pen_received(packet: InSimPENPacket) -> void:
-	print(packet)
+	Logger.log_message("Penalty for PLID %d: %s (%s)" % [packet.player_id, packet.new_penalty,
+			packet.reason])
 
 
 func _on_pit_received(packet: InSimPITPacket) -> void:
-	print(packet)
+	Logger.log_message("PLID %d made a pit stop: (details to be added)" % [packet.player_id])
 
 
 func _on_pla_received(packet: InSimPLAPacket) -> void:
@@ -116,7 +127,9 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 	if player.laps.is_empty():
 		lap = LapData.new()
 	if packet.fact != InSim.PitLane.PITLANE_EXIT and packet.fact != InSim.PitLane.PITLANE_NUM:
-		pass
+		Logger.log_message("PLID %d entered the pit lane." % [packet.player_id])
+	elif packet.fact == InSim.PitLane.PITLANE_EXIT:
+		Logger.log_message("PLID %d exited the pit lane." % [packet.player_id])
 
 
 func _on_pll_received(packet: InSimPLLPacket) -> void:
@@ -128,7 +141,8 @@ func _on_plp_received(packet: InSimPLPPacket) -> void:
 
 
 func _on_psf_received(packet: InSimPSFPacket) -> void:
-	print(packet)
+	Logger.log_message("PLID %d stopped in pits for %ss." \
+			% [packet.player_id, GISUtils.get_time_string_from_seconds(packet.gis_stop_time)])
 
 
 func _on_res_received(packet: InSimRESPacket) -> void:
@@ -136,6 +150,7 @@ func _on_res_received(packet: InSimRESPacket) -> void:
 
 
 func _on_rst_received(packet: InSimRSTPacket) -> void:
+	Logger.log_message("Race is starting.")
 	print("Nodes in track: %d" % [packet.num_nodes])
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
@@ -154,6 +169,8 @@ func _on_spx_received(packet: InSimSPXPacket) -> void:
 	if not player:
 		return
 	player.add_split(packet)
+	Logger.log_message("Split %d for PLID %d: %s" % [packet.split, packet.player_id,
+			GISUtils.get_time_string_from_seconds(packet.gis_split_time)])
 
 
 func _on_sta_received(packet: InSimSTAPacket) -> void:
