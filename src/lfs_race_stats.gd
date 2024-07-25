@@ -193,8 +193,25 @@ func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
 
 func _on_packet_received(packet: InSimPacket) -> void:
 	if (
-		packet is InSimMCIPacket
+		packet is InSimFINPacket
+		or packet is InSimFLGPacket
+		or packet is InSimLAPPacket
+		or packet is InSimMCIPacket
 		or packet is InSimMSOPacket
+		or packet is InSimPENPacket
+		or packet is InSimPITPacket
+		or packet is InSimPLAPacket
+		or packet is InSimPSFPacket
+		or packet is InSimRESPacket
+		or packet is InSimRSTPacket
+		or packet is InSimSPXPacket
+		or packet is InSimTOCPacket
+	):
+		return
+	if (
+		packet is InSimTinyPacket and (packet as InSimTinyPacket).sub_type in [
+			InSim.Tiny.TINY_REN,
+		]
 	):
 		return
 	Logger.log_packet(packet)
