@@ -21,6 +21,7 @@ func connect_signals() -> void:
 	_discard = insim.isp_flg_received.connect(_on_flg_received)
 	_discard = insim.isp_lap_received.connect(_on_lap_received)
 	_discard = insim.isp_mci_received.connect(_on_mci_received)
+	_discard = insim.isp_mso_received.connect(_on_mso_received)
 	_discard = insim.isp_npl_received.connect(_on_npl_received)
 	_discard = insim.isp_pit_received.connect(_on_pit_received)
 	_discard = insim.isp_pla_received.connect(_on_pla_received)
@@ -79,6 +80,13 @@ func _on_lap_received(packet: InSimLAPPacket) -> void:
 func _on_mci_received(packet: InSimMCIPacket) -> void:
 	for compcar in packet.info:
 		map.update_arrow(compcar)
+
+
+func _on_mso_received(packet: InSimMSOPacket) -> void:
+	var message := LFSText.strip_colors(packet.msg)
+	if packet.user_type == InSim.MessageUserValue.MSO_USER:
+		message = "PLID %d UCID %d - %s" % [packet.player_id, packet.ucid, message]
+	Logger.log_message(message)
 
 
 func _on_npl_received(packet: InSimNPLPacket) -> void:
@@ -157,15 +165,20 @@ func _on_sta_received(packet: InSimSTAPacket) -> void:
 
 
 func _on_toc_received(packet: InSimTOCPacket) -> void:
-	print(packet)
+	Logger.log_message("Driver change for PLID %d: UCID %d took over from UCID %d." \
+			% [packet.player_id, packet.new_ucid, packet.old_ucid])
 
 
 func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
 	map.remove_arrows()
+	Logger.log_message("Race ended.")
 
 
 func _on_packet_received(packet: InSimPacket) -> void:
-	if packet is InSimMCIPacket:
+	if (
+		packet is InSimMCIPacket
+		or packet is InSimMSOPacket
+	):
 		return
-	print(Time.get_time_string_from_system(), " - ", InSim.Packet.keys()[packet.type], ": ", packet.get_dictionary())
+	Logger.log_packet(packet)
 #endregion
