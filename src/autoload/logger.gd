@@ -1,12 +1,18 @@
 extends Node
 
 
+const FLUSH_INTERVAL := 1.0
+
 var file: FileAccess = null
 var file_open := false
+
+var flush_timer := Timer.new()
 
 
 func _ready() -> void:
 	create_log_file()
+	flush_timer.one_shot = true
+	add_child(flush_timer)
 
 
 func create_log_file() -> void:
@@ -28,7 +34,8 @@ func log_message(message: String) -> void:
 	if not file_open:
 		return
 	file.store_line("%s - %s" % [get_date_time_string(), message])
-	file.flush()
+	if flush_timer.is_stopped():
+		flush_timer.start(FLUSH_INTERVAL)
 
 
 func log_packet(packet: InSimPacket) -> void:
@@ -36,4 +43,11 @@ func log_packet(packet: InSimPacket) -> void:
 		return
 	var packet_string := packet.to_string()
 	file.store_line("%s - %s" % [get_date_time_string(), packet_string])
+	if flush_timer.is_stopped():
+		flush_timer.start(FLUSH_INTERVAL)
+
+
+func _on_flush_timer_timeout() -> void:
+	if not file_open:
+		return
 	file.flush()
