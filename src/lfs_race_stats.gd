@@ -205,7 +205,7 @@ func _on_rst_received(packet: InSimRSTPacket) -> void:
 	print("Nodes in track: %d" % [packet.num_nodes])
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
-	map.clear_arrows()
+	map.remove_arrows()
 
 
 func _on_slc_received(packet: InSimSLCPacket) -> void:

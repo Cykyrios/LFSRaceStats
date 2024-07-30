@@ -18,12 +18,6 @@ func add_arrow(compcar: CompCar) -> void:
 	add_child(arrow)
 
 
-func clear_arrows() -> void:
-	for arrow in arrows:
-		arrow.queue_free()
-	arrows.clear()
-
-
 func get_arrow_by_plid(plid: int) -> MapArrow:
 	for arrow in arrows:
 		if arrow.plid == plid:
