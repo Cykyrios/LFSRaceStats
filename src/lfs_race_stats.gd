@@ -172,8 +172,10 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 	if player.laps.is_empty():
 		lap = LapData.new()
 	if packet.fact != InSim.PitLane.PITLANE_EXIT and packet.fact != InSim.PitLane.PITLANE_NUM:
+		lap.inlap = true
 		Logger.log_message("PLID %d entered the pit lane." % [plid])
 	elif packet.fact == InSim.PitLane.PITLANE_EXIT:
+		lap.outlap = true
 		Logger.log_message("PLID %d exited the pit lane." % [plid])
 
 
