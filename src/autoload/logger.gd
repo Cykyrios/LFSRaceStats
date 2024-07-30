@@ -15,6 +15,10 @@ func _ready() -> void:
 	add_child(flush_timer)
 
 
+func _exit_tree() -> void:
+	close_log_file()
+
+
 func create_log_file() -> void:
 	file = FileAccess.open("user://%s.log" % [get_date_time_string()], FileAccess.WRITE)
 	if file:
@@ -24,6 +28,12 @@ func create_log_file() -> void:
 func close_log_file() -> void:
 	file_open = false
 	file = null
+
+
+func flush_log_file() -> void:
+	if not file_open:
+		return
+	file.flush()
 
 
 func get_date_time_string() -> String:
@@ -48,6 +58,4 @@ func log_packet(packet: InSimPacket) -> void:
 
 
 func _on_flush_timer_timeout() -> void:
-	if not file_open:
-		return
-	file.flush()
+	flush_log_file()
