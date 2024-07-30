@@ -101,6 +101,8 @@ func _on_flg_received(packet: InSimFLGPacket) -> void:
 		flag_string = "Yellow flag %s" % ["caused by" if packet.off_on else "cleared for"]
 	flag_string += " PLID %d (car behind: PLID %d)." % [packet.player_id, packet.car_behind]
 	Logger.log_message(flag_string)
+	map.set_flags(packet.player_id, -1 if packet.flag != 1 else 1 if packet.off_on else 0,
+			 -1 if packet.flag != 2 else 1 if packet.off_on else 0)
 
 
 func _on_lap_received(packet: InSimLAPPacket) -> void:
@@ -150,8 +152,12 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 				player.plid, packet.car_name])
 
 	var map_arrow := map.get_arrow_by_plid(player.plid)
-	if map_arrow:
-		map_arrow.visible = true
+	if not map_arrow:
+		var compcar := CompCar.new()
+		compcar.player_id = player.plid
+		map.add_arrow(compcar)
+		map_arrow = map.get_arrow_by_plid(player.plid)
+	map_arrow.visible = true
 
 
 func _on_pen_received(packet: InSimPENPacket) -> void:
@@ -174,9 +180,11 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 	if packet.fact != InSim.PitLane.PITLANE_EXIT and packet.fact != InSim.PitLane.PITLANE_NUM:
 		lap.inlap = true
 		Logger.log_message("PLID %d entered the pit lane." % [plid])
+		map.set_pitlane(plid, true)
 	elif packet.fact == InSim.PitLane.PITLANE_EXIT:
 		lap.outlap = true
 		Logger.log_message("PLID %d exited the pit lane." % [plid])
+		map.set_pitlane(plid, false)
 
 
 func _on_pll_received(packet: InSimPLLPacket) -> void:

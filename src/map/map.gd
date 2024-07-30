@@ -41,6 +41,7 @@ func remove_arrow_by_plid(plid: int) -> void:
 	var arrow := get_arrow_by_plid(plid)
 	if not arrow:
 		return
+	arrow.stop_flags()
 	arrow.queue_free()
 	arrows.erase(arrow)
 
@@ -59,13 +60,37 @@ func set_background(track: String) -> void:
 		track_image.texture = null
 
 
+func set_flags(plid: int, blue_flag := -1, yellow_flag := -1) -> void:
+	var arrow := get_arrow_by_plid(plid)
+	if not arrow:
+		return
+	if blue_flag > -1:
+		arrow.blue_flag = true if blue_flag == 1 else false
+	if yellow_flag > -1:
+		arrow.yellow_flag = true if yellow_flag == 1 else false
+	if arrow.blue_flag or arrow.yellow_flag:
+		arrow.show_flags()
+	else:
+		arrow.stop_flags()
+
+
+func set_pitlane(plid: int, in_pits: bool) -> void:
+	var arrow := get_arrow_by_plid(plid)
+	if not arrow:
+		return
+	arrow.in_pits = in_pits
+	if in_pits:
+		arrow.show_pitlane()
+	else:
+		arrow.stop_pitlane()
+
+
 func unpause() -> void:
 	for arrow in arrows:
 		arrow.paused = false
 		arrow.last_update_time = Time.get_ticks_msec() / 1000.0
 
 
-#func update_arrow(plid: int, driver: String, map_position: Vector2, heading: int) -> void:
 func update_arrow(compcar: CompCar) -> void:
 	var arrow := get_arrow_by_plid(compcar.player_id)
 	if not arrow:
