@@ -164,16 +164,17 @@ func _on_pit_received(packet: InSimPITPacket) -> void:
 
 
 func _on_pla_received(packet: InSimPLAPacket) -> void:
-	var player := get_player_from_plid(packet.player_id)
+	var plid := packet.player_id
+	var player := get_player_from_plid(plid)
 	if not player:
 		return
 	var lap: LapData = null
 	if player.laps.is_empty():
 		lap = LapData.new()
 	if packet.fact != InSim.PitLane.PITLANE_EXIT and packet.fact != InSim.PitLane.PITLANE_NUM:
-		Logger.log_message("PLID %d entered the pit lane." % [packet.player_id])
+		Logger.log_message("PLID %d entered the pit lane." % [plid])
 	elif packet.fact == InSim.PitLane.PITLANE_EXIT:
-		Logger.log_message("PLID %d exited the pit lane." % [packet.player_id])
+		Logger.log_message("PLID %d exited the pit lane." % [plid])
 
 
 func _on_pll_received(packet: InSimPLLPacket) -> void:
