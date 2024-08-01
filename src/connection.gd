@@ -7,6 +7,7 @@ var username := ""
 var nickname := ""
 
 var selected_car := ""
+var plid := -1
 
 
 func fill_info(packet: InSimNCNPacket) -> void:

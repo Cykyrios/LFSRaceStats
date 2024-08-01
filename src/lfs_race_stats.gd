@@ -45,6 +45,14 @@ func connect_signals() -> void:
 	_discard = insim.connected.connect(_on_insim_connected)
 
 
+func get_connection_from_plid(plid: int) -> Connection:
+	var player := get_player_from_plid(plid)
+	if not player:
+		return null
+	var connection := get_connection_from_ucid(player.ucid)
+	return connection
+
+
 func get_connection_from_ucid(ucid: int) -> Connection:
 	for connection in connections:
 		if connection.ucid == ucid:
@@ -57,6 +65,14 @@ func get_player_from_plid(plid: int) -> Player:
 		if player.plid == plid:
 			return player
 	return null
+
+
+func get_player_from_ucid(ucid: int) -> Player:
+	var connection := get_connection_from_ucid(ucid)
+	if not connection:
+		return null
+	var player := get_player_from_plid(connection.plid)
+	return player
 
 
 func initialize_insim() -> void:
