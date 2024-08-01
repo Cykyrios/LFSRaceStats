@@ -173,13 +173,17 @@ func _on_ncn_received(packet: InSimNCNPacket) -> void:
 
 
 func _on_npl_received(packet: InSimNPLPacket) -> void:
-	var player := get_player_from_plid(packet.player_id)
+	var plid := packet.player_id
+	var player := get_player_from_plid(plid)
 	var new_player := false
 	if not player:
 		new_player = true
 		player = Player.new()
 		players.append(player)
 	player.fill_info(packet)
+	var connection := get_connection_from_plid(plid)
+	if connection:
+		connection.plid = plid
 	if new_player:
 		Logger.log_message("New player joined: %s (PLID %d, %s)." % [player.nickname,
 				player.plid, packet.car_name])
