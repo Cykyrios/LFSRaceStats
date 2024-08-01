@@ -14,3 +14,5 @@ func fill_info(packet: InSimNCNPacket) -> void:
 	ucid = packet.ucid
 	username = packet.user_name
 	nickname = packet.player_name
+	if ucid == 0 and username.is_empty():
+		username = "host"
