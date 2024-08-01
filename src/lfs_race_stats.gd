@@ -221,8 +221,14 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 
 
 func _on_pll_received(packet: InSimPLLPacket) -> void:
-	players.erase(get_player_from_plid(packet.player_id))
-	map.remove_arrow_by_plid(packet.player_id)
+	var plid := packet.player_id
+	var player := get_player_from_plid(plid)
+	players.erase(player)
+	var connection := get_connection_from_plid(plid)
+	if connection:
+		connection.plid = -1
+	Logger.log_message("PLID %d spectated or was removed." % [plid])
+	map.remove_arrow_by_plid(plid)
 
 
 func _on_plp_received(packet: InSimPLPPacket) -> void:
@@ -316,6 +322,7 @@ func _on_packet_received(packet: InSimPacket) -> void:
 			InSim.Packet.ISP_PEN,
 			InSim.Packet.ISP_PIT,
 			InSim.Packet.ISP_PLA,
+			InSim.Packet.ISP_PLL,
 			InSim.Packet.ISP_PSF,
 			InSim.Packet.ISP_REO,
 			InSim.Packet.ISP_RES,
