@@ -355,7 +355,7 @@ func _on_small_vta_received(packet: InSimSmallPacket) -> void:
 
 func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
 	map.remove_arrows()
-	Logger.log_message("Race ended.")
+	Logger.log_message("Session ended.")
 
 
 func _on_packet_received(packet: InSimPacket) -> void:
