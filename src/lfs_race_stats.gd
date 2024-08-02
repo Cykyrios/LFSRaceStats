@@ -182,7 +182,7 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 		players.append(player)
 	player.fill_info(packet)
 	var connection := get_connection_from_plid(plid)
-	if connection:
+	if connection and packet.player_name == connection.nickname:
 		connection.plid = plid
 	if new_player:
 		Logger.log_message("New player joined: %s (PLID %d, %s)." % [player.nickname,
