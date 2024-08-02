@@ -245,7 +245,12 @@ func _on_psf_received(packet: InSimPSFPacket) -> void:
 
 
 func _on_reo_received(packet: InSimREOPacket) -> void:
-	Logger.log_message("Starting order: %s" % [packet.player_ids])
+	Logger.log_message("Starting grid:")
+	for i in packet.player_ids.size():
+		var id := packet.player_ids[i]
+		if id == 0:
+			break
+		Logger.log_message("P%d: PLID %d" % [i + 1, id])
 
 
 func _on_res_received(packet: InSimRESPacket) -> void:
