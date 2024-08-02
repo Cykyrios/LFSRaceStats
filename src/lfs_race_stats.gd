@@ -19,6 +19,7 @@ func _ready() -> void:
 func connect_signals() -> void:
 	var _discard := insim.isp_cnl_received.connect(_on_cnl_received)
 	_discard = insim.isp_cpr_received.connect(_on_cpr_received)
+	_discard = insim.isp_crs_received.connect(_on_crs_received)
 	_discard = insim.isp_csc_received.connect(_on_csc_received)
 	_discard = insim.isp_fin_received.connect(_on_fin_received)
 	_discard = insim.isp_flg_received.connect(_on_flg_received)
@@ -121,6 +122,12 @@ func _on_cpr_received(packet: InSimCPRPacket) -> void:
 		return
 	player.nickname = new_name
 	player.plate = new_plate
+
+
+func _on_crs_received(packet: InSimCRSPacket) -> void:
+	var plid := packet.player_id
+	var player := get_player_from_plid(plid)
+	Logger.log_message("%s (PLID %d) was reset." % [LFSText.strip_colors(player.nickname), plid])
 
 
 func _on_csc_received(packet: InSimCSCPacket) -> void:
@@ -358,6 +365,7 @@ func _on_packet_received(packet: InSimPacket) -> void:
 			InSim.Packet.ISP_CIM,
 			InSim.Packet.ISP_CNL,
 			InSim.Packet.ISP_CPR,
+			InSim.Packet.ISP_CRS,
 			InSim.Packet.ISP_CSC,
 			InSim.Packet.ISP_FIN,
 			InSim.Packet.ISP_FLG,
