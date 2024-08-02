@@ -145,17 +145,15 @@ func _on_fin_received(packet: InSimFINPacket) -> void:
 
 
 func _on_flg_received(packet: InSimFLGPacket) -> void:
-	var flag_string := ""
-	if packet.flag == 1:
-		flag_string = "Blue flag %s" % ["given to" if packet.off_on else "cleared for"]
-	if packet.flag == 2:
-		flag_string = "Yellow flag %s" % ["caused by" if packet.off_on else "cleared for"]
+	var flag_color := "Blue" if packet.flag == 1 else "Yellow" if packet.flag == 2 else "Unknown"
+	var on_off := "cleared for" if packet.off_on == 0 else "caused by" if packet.flag == 2 \
+			else "given to"
 	var player := get_player_from_plid(packet.player_id)
 	var car_behind := get_player_from_plid(packet.car_behind)
-	flag_string += " %s (PLID %d) (car behind: %s)." % \
-			[LFSText.strip_colors(player.nickname), player.plid,
-			"none" if not car_behind else "%s (PLID %d)" % \
-			[LFSText.strip_colors(car_behind.nickname), car_behind.plid]]
+	var flag_string := "%s flag %s %s (PLID %d)%s." % [flag_color, on_off,
+			LFSText.strip_colors(player.nickname), player.plid, " (car behind: %s (PLID %d))" % \
+			[LFSText.strip_colors(car_behind.nickname), car_behind.plid] if packet.flag == 1 \
+			and packet.off_on == 1 else ""]
 	Logger.log_message(flag_string)
 	map.set_flags(packet.player_id, -1 if packet.flag != 1 else 1 if packet.off_on else 0,
 			 -1 if packet.flag != 2 else 1 if packet.off_on else 0)
