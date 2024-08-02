@@ -12,6 +12,7 @@ var flush_timer := Timer.new()
 func _ready() -> void:
 	create_log_file()
 	flush_timer.one_shot = true
+	var _discard := flush_timer.timeout.connect(_on_flush_timer_timeout)
 	add_child(flush_timer)
 
 
