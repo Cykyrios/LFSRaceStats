@@ -47,6 +47,15 @@ func connect_signals() -> void:
 	_discard = insim.connected.connect(_on_insim_connected)
 
 
+func initialize_insim() -> void:
+	var init_data := InSimInitializationData.new()
+	init_data.i_name = "GIS Race Stats"
+	init_data.flags |= InSim.InitFlag.ISF_LOCAL | InSim.InitFlag.ISF_MCI
+	init_data.interval = 250
+	insim.initialize("127.0.0.1", 29999, init_data)
+
+
+#region Connections, Players, Drivers
 func get_connection_from_plid(plid: int) -> Connection:
 	var player := get_player_from_plid(plid)
 	if not player:
@@ -75,15 +84,7 @@ func get_player_from_ucid(ucid: int) -> Player:
 		return null
 	var player := get_player_from_plid(connection.plid)
 	return player
-
-
-func initialize_insim() -> void:
-	var init_data := InSimInitializationData.new()
-	init_data.i_name = "GIS Race Stats"
-	init_data.flags |= InSim.InitFlag.ISF_LOCAL | InSim.InitFlag.ISF_MCI
-	init_data.interval = 250
-	insim.initialize("127.0.0.1", 29999, init_data)
-
+#endregion
 
 #region InSim callbacks
 func _on_insim_connected() -> void:
