@@ -292,7 +292,8 @@ func _on_res_received(packet: InSimRESPacket) -> void:
 
 
 func _on_rst_received(packet: InSimRSTPacket) -> void:
-	Logger.log_message("Race is starting.")
+	if packet.req_i == 0:
+		Logger.log_message("Session started.")
 	print("Nodes in track: %d" % [packet.num_nodes])
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
