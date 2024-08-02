@@ -5,7 +5,7 @@ var insim := InSim.new()
 
 var connections: Array[Connection] = []
 var players: Array[Player] = []
-var drivers: Array[DriverData] = []
+var drivers: Array[Driver] = []
 
 @onready var map: Map = %Map as Map
 
@@ -56,12 +56,19 @@ func initialize_insim() -> void:
 
 
 #region Connections, Players, Drivers
+func get_connection_from_driver(driver: Driver) -> Connection:
+	var username := driver.username
+	for connection in connections:
+		if connection.username == username:
+			return connection
+	return null
+
+
 func get_connection_from_plid(plid: int) -> Connection:
 	var player := get_player_from_plid(plid)
 	if not player:
 		return null
-	var connection := get_connection_from_ucid(player.ucid)
-	return connection
+	return get_connection_from_ucid(player.ucid)
 
 
 func get_connection_from_ucid(ucid: int) -> Connection:
@@ -69,6 +76,35 @@ func get_connection_from_ucid(ucid: int) -> Connection:
 		if connection.ucid == ucid:
 			return connection
 	return null
+
+
+func get_connection_from_username(username: String) -> Connection:
+	for connection in connections:
+		if connection.username == username:
+			return connection
+	return null
+
+
+func get_driver_from_plid(plid: int) -> Driver:
+	return _get_driver_from_connection(get_connection_from_plid(plid))
+
+
+func get_driver_from_ucid(ucid: int) -> Driver:
+	return _get_driver_from_connection(get_connection_from_ucid(ucid))
+
+
+func get_driver_from_username(username: String) -> Driver:
+	for driver in drivers:
+		if driver.username == username:
+			return driver
+	return null
+
+
+func get_player_from_driver(driver: Driver) -> Player:
+	var connection := get_connection_from_driver(driver)
+	if not connection:
+		return null
+	return get_player_from_ucid(connection.ucid)
 
 
 func get_player_from_plid(plid: int) -> Player:
@@ -82,8 +118,24 @@ func get_player_from_ucid(ucid: int) -> Player:
 	var connection := get_connection_from_ucid(ucid)
 	if not connection:
 		return null
-	var player := get_player_from_plid(connection.plid)
-	return player
+	return get_player_from_plid(connection.plid)
+
+
+func get_player_from_username(username: String) -> Player:
+	var connection := get_connection_from_username(username)
+	if not connection:
+		return null
+	return get_player_from_ucid(connection.ucid)
+
+
+func _get_driver_from_connection(connection: Connection) -> Driver:
+	if not connection:
+		return null
+	var username := connection.username
+	for driver in drivers:
+		if driver.username == username:
+			return driver
+	return null
 #endregion
 
 #region InSim callbacks
