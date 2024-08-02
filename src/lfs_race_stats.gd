@@ -92,38 +92,47 @@ func _on_insim_connected() -> void:
 
 
 func _on_cnl_received(packet: InSimCNLPacket) -> void:
-	Logger.log_message("UCID %d left." % [packet.ucid])
-	for connection in connections:
-		if connection.ucid == packet.ucid:
-			connections.erase(connection)
-			break
+	var connection := get_connection_from_ucid(packet.ucid)
+	if not connection:
+		push_error("Could not find connection with UCID %d" % [packet.ucid])
+		return
+	Logger.log_message("%s (%s, UCID %d) left." % [LFSText.strip_colors(connection.nickname),
+			connection.username, connection.ucid])
+	connections.erase(connection)
 
 
 func _on_cpr_received(packet: InSimCPRPacket) -> void:
-	var ucid := packet.ucid
+	var connection := get_connection_from_ucid(packet.ucid)
+	if not connection:
+		push_error("Could not find connection with UCID %d" % [packet.ucid])
+		return
+	var ucid := connection.ucid
+	var old_name := connection.nickname
 	var new_name := packet.player_name
 	var new_plate := packet.plate
-	Logger.log_message("UCID %d renamed to %s (plate %s)." % [ucid, new_name, new_plate])
-	var connection := get_connection_from_ucid(ucid)
-	if not connection:
-		return
+	Logger.log_message("%s (UCID %d) renamed to %s (plate %s)." % [LFSText.strip_colors(old_name),
+			ucid, LFSText.strip_colors(new_name), new_plate])
 	connection.nickname = new_name
 	var player := get_player_from_ucid(ucid)
 	if not player:
+		push_error("Could not find player from UCID %d" % [connection.ucid])
 		return
 	player.nickname = new_name
 	player.plate = new_plate
 
 
 func _on_csc_received(packet: InSimCSCPacket) -> void:
-	Logger.log_message("PLID %d %s." % [packet.player_id,
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("%s (PLID %d) %s." % [LFSText.strip_colors(player.nickname), player.plid,
 			"started" if packet.csc_action == InSim.CSCAction.CSC_START else "stopped"])
 
 
 func _on_fin_received(packet: InSimFINPacket) -> void:
-	Logger.log_message("PLID %d finished in %s (%d laps, best lap %s)." % [packet.player_id,
-			GISUtils.get_time_string_from_seconds(packet.gis_race_time), packet.laps_done,
-			GISUtils.get_time_string_from_seconds(packet.gis_best_lap)])
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("%s (PLID %d) finished in %s (%d laps, best lap %s)." % \
+			[LFSText.strip_colors(player.nickname), player.plid,
+			GISUtils.get_time_string_from_seconds(packet.gis_race_time),
+			packet.laps_done, GISUtils.get_time_string_from_seconds(packet.gis_best_lap)])
 
 
 func _on_flg_received(packet: InSimFLGPacket) -> void:
@@ -132,7 +141,12 @@ func _on_flg_received(packet: InSimFLGPacket) -> void:
 		flag_string = "Blue flag %s" % ["given to" if packet.off_on else "cleared for"]
 	if packet.flag == 2:
 		flag_string = "Yellow flag %s" % ["caused by" if packet.off_on else "cleared for"]
-	flag_string += " PLID %d (car behind: PLID %d)." % [packet.player_id, packet.car_behind]
+	var player := get_player_from_plid(packet.player_id)
+	var car_behind := get_player_from_plid(packet.car_behind)
+	flag_string += " %s (PLID %d) (car behind: %s)." % \
+			[LFSText.strip_colors(player.nickname), player.plid,
+			"none" if not car_behind else "%s (PLID %d)" % \
+			[LFSText.strip_colors(car_behind.nickname), car_behind.plid]]
 	Logger.log_message(flag_string)
 	map.set_flags(packet.player_id, -1 if packet.flag != 1 else 1 if packet.off_on else 0,
 			 -1 if packet.flag != 2 else 1 if packet.off_on else 0)
@@ -143,7 +157,8 @@ func _on_lap_received(packet: InSimLAPPacket) -> void:
 	if not player:
 		return
 	player.add_lap(packet)
-	Logger.log_message("Lap %d completed by PLID %d: %s" % [packet.laps_done, packet.player_id,
+	Logger.log_message("Lap %d completed by %s (PLID %d): %s" % [packet.laps_done,
+			LFSText.strip_colors(player.nickname), player.plid,
 			GISUtils.get_time_string_from_seconds(packet.gis_lap_time)])
 
 
@@ -155,7 +170,9 @@ func _on_mci_received(packet: InSimMCIPacket) -> void:
 func _on_mso_received(packet: InSimMSOPacket) -> void:
 	var message := LFSText.strip_colors(packet.msg)
 	if packet.user_type == InSim.MessageUserValue.MSO_USER:
-		message = "PLID %d UCID %d - %s" % [packet.player_id, packet.ucid, message]
+		var connection := get_connection_from_ucid(packet.ucid)
+		message = "%s (%s) - %s" % [LFSText.strip_colors(connection.nickname),
+				connection.username, message]
 	Logger.log_message(message)
 
 
@@ -168,8 +185,8 @@ func _on_ncn_received(packet: InSimNCNPacket) -> void:
 		connections.append(connection)
 	connection.fill_info(packet)
 	if new_connection:
-		Logger.log_message("New connection: %s (%s, UCID %d)." % [connection.nickname,
-				connection.username, connection.ucid])
+		Logger.log_message("New connection: %s (%s, UCID %d)." % \
+				[LFSText.strip_colors(connection.nickname), connection.username, connection.ucid])
 
 
 func _on_npl_received(packet: InSimNPLPacket) -> void:
@@ -185,8 +202,8 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 	if connection and packet.player_name == connection.nickname:
 		connection.plid = plid
 	if new_player:
-		Logger.log_message("New player joined: %s (PLID %d, %s)." % [player.nickname,
-				player.plid, packet.car_name])
+		Logger.log_message("New player joined: %s (PLID %d, %s)." % \
+				[LFSText.strip_colors(player.nickname), player.plid, packet.car_name])
 
 	var map_arrow := map.get_arrow_by_plid(player.plid)
 	if not map_arrow:
@@ -198,12 +215,16 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 
 
 func _on_pen_received(packet: InSimPENPacket) -> void:
-	Logger.log_message("Penalty for PLID %d: %s (%s)" % [packet.player_id, packet.new_penalty,
-			packet.reason])
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("Penalty for %s (PLID %d): %s (%s)" % [LFSText.strip_colors(player.nickname),
+			player.plid, InSim.Penalty.keys()[packet.new_penalty],
+			InSim.PenaltyReason.keys()[packet.reason]])
 
 
 func _on_pit_received(packet: InSimPITPacket) -> void:
-	Logger.log_message("PLID %d made a pit stop: (details to be added)" % [packet.player_id])
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("%s (PLID %d) made a pit stop: (details to be added)" % \
+			[LFSText.strip_colors(player.nickname), player.plid])
 
 
 func _on_pla_received(packet: InSimPLAPacket) -> void:
@@ -216,11 +237,13 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 		lap = LapData.new()
 	if packet.fact != InSim.PitLane.PITLANE_EXIT and packet.fact != InSim.PitLane.PITLANE_NUM:
 		lap.inlap = true
-		Logger.log_message("PLID %d entered the pit lane." % [plid])
+		Logger.log_message("%s (PLID %d) entered the pit lane." % \
+				[LFSText.strip_colors(player.nickname), plid])
 		map.set_pitlane(plid, true)
 	elif packet.fact == InSim.PitLane.PITLANE_EXIT:
 		lap.outlap = true
-		Logger.log_message("PLID %d exited the pit lane." % [plid])
+		Logger.log_message("%s (PLID %d) exited the pit lane." % \
+				[LFSText.strip_colors(player.nickname), plid])
 		map.set_pitlane(plid, false)
 
 
@@ -231,17 +254,23 @@ func _on_pll_received(packet: InSimPLLPacket) -> void:
 	var connection := get_connection_from_plid(plid)
 	if connection:
 		connection.plid = -1
-	Logger.log_message("PLID %d spectated or was removed." % [plid])
+	Logger.log_message("%s (PLID %d) spectated or was removed." % \
+			[LFSText.strip_colors(player.nickname), plid])
 	map.remove_arrow_by_plid(plid)
 
 
 func _on_plp_received(packet: InSimPLPPacket) -> void:
-	map.hide_arrow_by_plid(packet.player_id)
+	var plid := packet.player_id
+	var player := get_player_from_plid(plid)
+	Logger.log_message("%s (PLID %d) pitted." % [LFSText.strip_colors(player.nickname), plid])
+	map.hide_arrow_by_plid(plid)
 
 
 func _on_psf_received(packet: InSimPSFPacket) -> void:
-	Logger.log_message("PLID %d stopped in pits for %ss." \
-			% [packet.player_id, GISUtils.get_time_string_from_seconds(packet.gis_stop_time)])
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("%s (PLID %d) stopped in pits for %ss." % \
+			[LFSText.strip_colors(player.nickname), player.plid,
+			GISUtils.get_time_string_from_seconds(packet.gis_stop_time)])
 
 
 func _on_reo_received(packet: InSimREOPacket) -> void:
@@ -250,13 +279,16 @@ func _on_reo_received(packet: InSimREOPacket) -> void:
 		var id := packet.player_ids[i]
 		if id == 0:
 			break
-		Logger.log_message("P%d: PLID %d" % [i + 1, id])
+		var player := get_player_from_plid(id)
+		Logger.log_message("P%d: %s (PLID %d)" % [i + 1, LFSText.strip_colors(player.nickname), id])
 
 
 func _on_res_received(packet: InSimRESPacket) -> void:
-	Logger.log_message("PLID %d (%s) %s." % [packet.player_id, packet.car_name,
-			"did not finish" if packet.result_num == 255 else "finished P%d (best lap %s)" \
-			% [packet.result_num + 1, GISUtils.get_time_string_from_seconds(packet.gis_best_lap)]])
+	var player := get_player_from_plid(packet.player_id)
+	Logger.log_message("%s (PLID %d, %s) %s." % [LFSText.strip_colors(player.nickname),
+			player.plid, packet.car_name,
+			"did not finish" if packet.result_num == 255 else "finished P%d (best lap %s)" % \
+			[packet.result_num + 1, GISUtils.get_time_string_from_seconds(packet.gis_best_lap)]])
 
 
 func _on_rst_received(packet: InSimRSTPacket) -> void:
@@ -279,7 +311,8 @@ func _on_spx_received(packet: InSimSPXPacket) -> void:
 	if not player:
 		return
 	player.add_split(packet)
-	Logger.log_message("Split %d for PLID %d: %s" % [packet.split, packet.player_id,
+	Logger.log_message("Split %d for %s (PLID %d): %s" % [packet.split,
+			LFSText.strip_colors(player.nickname), player.plid,
 			GISUtils.get_time_string_from_seconds(packet.gis_split_time)])
 
 
@@ -292,8 +325,11 @@ func _on_sta_received(packet: InSimSTAPacket) -> void:
 
 
 func _on_toc_received(packet: InSimTOCPacket) -> void:
-	Logger.log_message("Driver change for PLID %d: UCID %d took over from UCID %d." \
-			% [packet.player_id, packet.new_ucid, packet.old_ucid])
+	var new_connection := get_connection_from_ucid(packet.new_ucid)
+	var old_connection := get_connection_from_ucid(packet.old_ucid)
+	Logger.log_message("Driver change for PLID %d: %s (UCID %d) took over from %s (UCID %d)." % \
+			[packet.player_id, LFSText.strip_colors(new_connection.nickname), packet.new_ucid,
+			LFSText.strip_colors(old_connection.nickname), packet.old_ucid])
 
 
 func _on_small_vta_received(packet: InSimSmallPacket) -> void:
