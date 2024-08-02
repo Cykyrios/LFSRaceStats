@@ -11,6 +11,8 @@ var relative_times := RelativeTimes.new()
 var current_time := 0.0
 
 @onready var map: Map = %Map as Map
+@onready var connections_vbox := %ConnectionsVBox
+@onready var players_vbox := %PlayersVBox
 
 
 func _ready() -> void:
@@ -160,6 +162,11 @@ func _on_cnl_received(packet: InSimCNLPacket) -> void:
 		return
 	Logger.log_message("%s (%s, UCID %d) left." % [LFSText.strip_colors(connection.nickname),
 			connection.username, connection.ucid])
+	for panel: PanelContainer in connections_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("ucid", -1) == connection.ucid:
+			panel.queue_free()
+			break
 	connections.erase(connection)
 
 
@@ -175,12 +182,24 @@ func _on_cpr_received(packet: InSimCPRPacket) -> void:
 	Logger.log_message("%s (UCID %d) renamed to %s (plate %s)." % [LFSText.strip_colors(old_name),
 			ucid, LFSText.strip_colors(new_name), new_plate])
 	connection.nickname = new_name
+	for panel: PanelContainer in connections_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("ucid") == ucid:
+			label.text = "%s (%s, UCID %d)" % [LFSText.lfs_colors_to_bbcode(connection.nickname),
+				LFSText.lfs_colors_to_bbcode(connection.username), connection.ucid]
+			break
 	var player := get_player_from_ucid(ucid)
 	if not player:
 		push_error("Could not find player from UCID %d" % [connection.ucid])
 		return
 	player.nickname = new_name
 	player.plate = new_plate
+	for panel: PanelContainer in players_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("plid") == player.plid:
+			label.text = "%s (PLID %d, UCID %d)" % [LFSText.lfs_colors_to_bbcode(player.nickname),
+				player.plid, player.ucid]
+		break
 
 
 func _on_crs_received(packet: InSimCRSPacket) -> void:
@@ -256,6 +275,24 @@ func _on_ncn_received(packet: InSimNCNPacket) -> void:
 		connections.append(connection)
 	connection.fill_info(packet)
 	if new_connection:
+		var panel := PanelContainer.new()
+		var stylebox := StyleBoxFlat.new()
+		stylebox.bg_color = Color.hex(0x50505099)
+		stylebox.content_margin_top = 4
+		stylebox.content_margin_left = 4
+		stylebox.content_margin_bottom = 4
+		stylebox.content_margin_right = 4
+		panel.add_theme_stylebox_override("panel", stylebox)
+		var label := RichTextLabel.new()
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.add_theme_color_override("default_color", Color.hex(0xccccccff))
+		label.text = "%s (%s, UCID %d)" % [LFSText.lfs_colors_to_bbcode(connection.nickname),
+				LFSText.lfs_colors_to_bbcode(connection.username), connection.ucid]
+		label.set_meta("ucid", connection.ucid)
+		panel.add_child(label)
+		connections_vbox.add_child(panel)
 		Logger.log_message("New connection: %s (%s, UCID %d)." % \
 				[LFSText.strip_colors(connection.nickname), connection.username, connection.ucid])
 
@@ -273,6 +310,24 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 	if connection and packet.player_name == connection.nickname:
 		connection.plid = plid
 	if new_player:
+		var panel := PanelContainer.new()
+		var stylebox := StyleBoxFlat.new()
+		stylebox.bg_color = Color.hex(0x50505099)
+		stylebox.content_margin_top = 4
+		stylebox.content_margin_left = 4
+		stylebox.content_margin_bottom = 4
+		stylebox.content_margin_right = 4
+		panel.add_theme_stylebox_override("panel", stylebox)
+		var label := RichTextLabel.new()
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.add_theme_color_override("default_color", Color.hex(0xccccccff))
+		label.text = "%s (PLID %d, UCID %d)" % [LFSText.lfs_colors_to_bbcode(player.nickname),
+				player.plid, player.ucid]
+		label.set_meta("plid", player.plid)
+		panel.add_child(label)
+		players_vbox.add_child(panel)
 		Logger.log_message("New player joined: %s (PLID %d, %s)." % \
 				[LFSText.strip_colors(player.nickname), player.plid, packet.car_name])
 
@@ -321,6 +376,11 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 func _on_pll_received(packet: InSimPLLPacket) -> void:
 	var plid := packet.plid
 	var player := get_player_from_plid(plid)
+	for panel: PanelContainer in players_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("plid", -1) == plid:
+			panel.queue_free()
+			break
 	players.erase(player)
 	var connection := get_connection_from_plid(plid)
 	if connection:
