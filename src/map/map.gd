@@ -9,7 +9,7 @@ var arrows: Array[MapArrow] = []
 
 func add_arrow(compcar: CompCar) -> void:
 	var arrow := MapArrow.new()
-	arrow.plid = compcar.player_id
+	arrow.plid = compcar.plid
 	arrow.last_position = compcar.gis_position
 	arrow.last_heading = compcar.gis_heading
 	arrow.last_speed = compcar.gis_speed
@@ -92,7 +92,7 @@ func unpause() -> void:
 
 
 func update_arrow(compcar: CompCar) -> void:
-	var arrow := get_arrow_by_plid(compcar.player_id)
+	var arrow := get_arrow_by_plid(compcar.plid)
 	if not arrow:
 		add_arrow(compcar)
 		arrow = arrows[-1]

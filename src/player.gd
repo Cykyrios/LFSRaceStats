@@ -39,7 +39,7 @@ func add_split(packet: InSimSPXPacket) -> void:
 
 
 func fill_info(packet: InSimNPLPacket) -> void:
-	plid = packet.player_id
+	plid = packet.plid
 	ucid = packet.ucid
 	nickname = packet.player_name
 	plate = packet.plate
