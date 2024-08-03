@@ -394,7 +394,7 @@ func _on_toc_received(packet: InSimTOCPacket) -> void:
 
 
 func _on_small_vta_received(packet: InSimSmallPacket) -> void:
-	var vote_action := ""
+	var vote_action := "Nothing"
 	match packet.value:
 		InSim.Vote.VOTE_END:
 			vote_action = "End race"
