@@ -328,9 +328,10 @@ func _on_plp_received(packet: InSimPLPPacket) -> void:
 
 func _on_psf_received(packet: InSimPSFPacket) -> void:
 	var player := get_player_from_plid(packet.player_id)
-	Logger.log_message("%s (PLID %d) stopped in pits for %ss." % \
+	Logger.log_message("%s (PLID %d) stopped in pits for %s." % \
 			[LFSText.strip_colors(player.nickname), player.plid,
-			GISUtils.get_time_string_from_seconds(packet.gis_stop_time)])
+			GISUtils.get_time_string_from_seconds(packet.gis_stop_time) \
+			+ ("s" if packet.gis_stop_time < 60 else "")])
 
 
 func _on_reo_received(packet: InSimREOPacket) -> void:
