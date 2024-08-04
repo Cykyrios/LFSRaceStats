@@ -18,6 +18,10 @@ func add_arrow(compcar: CompCar) -> void:
 	add_child(arrow)
 
 
+func clear_flags_for_plid(plid: int) -> void:
+	set_flags(plid, 0, 0)
+
+
 func get_arrow_by_plid(plid: int) -> MapArrow:
 	for arrow in arrows:
 		if arrow.plid == plid:
@@ -80,6 +84,7 @@ func set_pitlane(plid: int, in_pits: bool) -> void:
 		return
 	arrow.in_pits = in_pits
 	if in_pits:
+		clear_flags_for_plid(plid)
 		arrow.show_pitlane()
 	else:
 		arrow.stop_pitlane()

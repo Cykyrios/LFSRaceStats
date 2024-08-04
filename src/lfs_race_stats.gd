@@ -323,6 +323,7 @@ func _on_plp_received(packet: InSimPLPPacket) -> void:
 	var plid := packet.plid
 	var player := get_player_from_plid(plid)
 	Logger.log_message("%s (PLID %d) pitted." % [LFSText.strip_colors(player.nickname), plid])
+	map.clear_flags_for_plid(plid)
 	map.hide_arrow_by_plid(plid)
 
 
