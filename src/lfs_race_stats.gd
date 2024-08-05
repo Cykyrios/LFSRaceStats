@@ -7,6 +7,9 @@ var connections: Array[Connection] = []
 var players: Array[Player] = []
 var drivers: Array[Driver] = []
 
+var relative_times := RelativeTimes.new()
+var current_time := 0.0
+
 @onready var map: Map = %Map as Map
 
 
@@ -14,6 +17,8 @@ func _ready() -> void:
 	add_child(insim)
 	connect_signals()
 	initialize_insim()
+
+	add_child(relative_times)
 
 
 func connect_signals() -> void:
@@ -41,6 +46,7 @@ func connect_signals() -> void:
 	_discard = insim.isp_spx_received.connect(_on_spx_received)
 	_discard = insim.isp_sta_received.connect(_on_sta_received)
 	_discard = insim.isp_toc_received.connect(_on_toc_received)
+	_discard = insim.small_rtp_received.connect(_on_small_rtp_received)
 	_discard = insim.small_vta_received.connect(_on_small_vta_received)
 	_discard = insim.tiny_ren_received.connect(_on_tiny_ren_received)
 	_discard = insim.packet_received.connect(_on_packet_received)
@@ -223,8 +229,13 @@ func _on_lap_received(packet: InSimLAPPacket) -> void:
 
 
 func _on_mci_received(packet: InSimMCIPacket) -> void:
+	var time_request := InSimTinyPacket.new(1, InSim.Tiny.TINY_GTH)
+	insim.send_packet(time_request)
+	await insim.small_rtp_received
 	for compcar in packet.info:
 		map.update_arrow(compcar)
+		relative_times.update_time(compcar.plid, compcar.position, compcar.lap,
+				compcar.node, current_time)
 
 
 func _on_mso_received(packet: InSimMSOPacket) -> void:
@@ -356,9 +367,9 @@ func _on_res_received(packet: InSimRESPacket) -> void:
 func _on_rst_received(packet: InSimRSTPacket) -> void:
 	if packet.req_i == 0:
 		Logger.log_message("Session started.")
-	print("Nodes in track: %d" % [packet.num_nodes])
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
+	relative_times.initialize(packet, players)
 
 
 func _on_slc_received(packet: InSimSLCPacket) -> void:
@@ -392,6 +403,10 @@ func _on_toc_received(packet: InSimTOCPacket) -> void:
 	Logger.log_message("Driver change for PLID %d: %s (UCID %d) took over from %s (UCID %d)." % \
 			[packet.plid, LFSText.strip_colors(new_connection.nickname), packet.new_ucid,
 			LFSText.strip_colors(old_connection.nickname), packet.old_ucid])
+
+
+func _on_small_rtp_received(packet: InSimSmallPacket) -> void:
+	current_time = packet.value / 100.0
 
 
 func _on_small_vta_received(packet: InSimSmallPacket) -> void:
@@ -447,6 +462,7 @@ func _on_packet_received(packet: InSimPacket) -> void:
 			InSim.Tiny.TINY_REPLY,
 			InSim.Tiny.TINY_VTC,
 		] or packet is InSimSmallPacket and (packet as InSimSmallPacket).sub_type in [
+			InSim.Small.SMALL_RTP,
 			InSim.Small.SMALL_VTA,
 		]
 	):
