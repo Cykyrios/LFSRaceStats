@@ -1,8 +1,6 @@
 extends MarginContainer
 
 
-@export var target_plid := 0
-
 var insim := InSim.new()
 
 var connections: Array[Connection] = []
@@ -11,6 +9,7 @@ var drivers: Array[Driver] = []
 
 var relative_times := RelativeTimes.new()
 var current_time := 0.0
+var target_plid := 0
 
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
@@ -88,8 +87,8 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			if label.get_meta("plid", 0) == plid:
 				players_vbox.add_child(panel)
 				var player := get_player_from_plid(plid)
-				label.text = "%-3d\t%s (PLID %d)" % [driver.position,
-						LFSText.lfs_colors_to_bbcode(player.nickname), player.plid]
+				label.text = "%-3d\t%-24s" % [driver.position,
+						LFSText.lfs_colors_to_bbcode(player.nickname)]
 				break
 		if plid == reference_plid:
 			continue
@@ -256,6 +255,7 @@ func _on_insim_connected() -> void:
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RES))
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RST))
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_SST))
 
 
 func _on_cnl_received(packet: InSimCNLPacket) -> void:
@@ -553,6 +553,9 @@ func _on_spx_received(packet: InSimSPXPacket) -> void:
 
 
 func _on_sta_received(packet: InSimSTAPacket) -> void:
+	var viewed_plid := packet.view_plid
+	if viewed_plid != 0:
+		target_plid = viewed_plid
 	var game_paused := packet.flags & InSim.State.ISS_PAUSED
 	if game_paused:
 		map.pause()
