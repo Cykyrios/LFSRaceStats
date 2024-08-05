@@ -24,7 +24,7 @@ func _ready() -> void:
 	var timer := Timer.new()
 	var _discard := timer.timeout.connect(relative_times.sort_drivers_by_position)
 	add_child(timer)
-	timer.start(0.1)
+	timer.start(0.25)
 	_discard = relative_times.drivers_sorted.connect(func() -> void:
 		var panels := players_vbox.get_children()
 		for panel in panels:
