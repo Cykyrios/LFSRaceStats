@@ -62,7 +62,6 @@ func sort_drivers_by_position() -> void:
 func update_position(plid: int, position: int) -> void:
 	for driver in times:
 		if driver.plid == plid:
-			var old_position := driver.position
 			driver.position = position
 			for d in times:
 				if d.position == position and d.plid != plid:
