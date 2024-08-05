@@ -5,7 +5,7 @@ extends Node
 signal drivers_sorted
 
 const MAX_CARS_IN_RACE := 40
-const PTH_STEP := 5
+const PTH_STEP := 1
 
 var nodes: Array[int] = []
 var times: Array[DriverTimes] = []
