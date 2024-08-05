@@ -46,8 +46,13 @@ func _ready() -> void:
 				return
 			var driver := relative_times.times[idx]
 			var driver_in_front := relative_times.times[idx - 1]
-			var lap_difference := driver_in_front.lap - driver.lap - (1 if \
-					driver.last_updated_index > driver_in_front.last_updated_index else 0)
+			var lap_difference := driver_in_front.lap - driver.lap
+			if (
+				driver_in_front.last_updated_index == relative_times.nodes.size() - 1
+				or driver.last_updated_index > driver_in_front.last_updated_index
+				and driver.last_updated_index != relative_times.nodes.size() - 1
+			):
+				lap_difference -= 1
 			var difference := driver.times[driver.last_updated_index] \
 					- driver_in_front.times[driver.last_updated_index]
 			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
