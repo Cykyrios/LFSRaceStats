@@ -56,9 +56,8 @@ func _ready() -> void:
 			var difference := driver.times[driver.last_updated_index] \
 					- driver_in_front.times[driver.last_updated_index]
 			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
-			label.text += ": %s" % ["%s%sL" % ["+" if lap_difference >= 0 else "", lap_difference] \
-					if lap_difference != 0 else "%s%s" % ["+" if difference >= 0 else "",
-					GISUtils.get_time_string_from_seconds(difference)]])
+			label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+					"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]])
 
 
 func connect_signals() -> void:
