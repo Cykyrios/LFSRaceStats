@@ -88,9 +88,8 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			if label.get_meta("plid", 0) == plid:
 				players_vbox.add_child(panel)
 				var player := get_player_from_plid(plid)
-				label.text = "%s (PLID %d, UCID %d) - node %d" % \
-						[LFSText.lfs_colors_to_bbcode(player.nickname),
-						player.plid, player.ucid, relative_times.nodes[driver.last_updated_index]]
+				label.text = "%-3d\t%s (PLID %d)" % [driver.position,
+						LFSText.lfs_colors_to_bbcode(player.nickname), player.plid]
 				break
 		if plid == reference_plid:
 			continue
@@ -109,7 +108,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			var difference := driver.times[driver.last_updated_index] \
 					- target_driver.times[driver.last_updated_index]
 			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
-			label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+			label.text += "\t%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
 					"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
 		elif idx < target_idx:
 			var driver := relative_times.times[idx]
@@ -123,7 +122,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			var difference := target_driver.times[target_driver.last_updated_index] \
 					- driver.times[target_driver.last_updated_index]
 			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
-			label.text += ": %s" % ["%+dL" % [-lap_difference] if lap_difference != 0 else \
+			label.text += "\t%s" % ["%+dL" % [-lap_difference] if lap_difference != 0 else \
 					"%s" % [GISUtils.get_time_string_from_seconds(-difference, 1, true, true)]]
 
 
