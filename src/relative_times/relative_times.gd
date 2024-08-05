@@ -59,13 +59,25 @@ func sort_drivers_by_position() -> void:
 	drivers_sorted.emit()
 
 
+func update_position(plid: int, position: int) -> void:
+	for driver in times:
+		if driver.plid == plid:
+			var old_position := driver.position
+			driver.position = position
+			for d in times:
+				if d.position == position and d.plid != plid:
+					update_position(d.plid, position + 1)
+					break
+			return
+
+
 func update_time(plid: int, position: int, lap: int, node: int, time: float) -> void:
 	var idx := nodes.find(node)
 	if idx < 0:
 		return
 	for driver in times:
 		if driver.plid == plid:
-			driver.position = position
+			update_position(plid, position)
 			driver.lap = lap
 			driver.times[idx] = time
 			driver.last_updated_index = idx
