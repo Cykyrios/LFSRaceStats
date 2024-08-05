@@ -2,6 +2,8 @@ class_name RelativeTimes
 extends Node
 
 
+signal drivers_sorted
+
 const MAX_CARS_IN_RACE := 40
 const PTH_DECIMATION := 0.1
 
@@ -54,6 +56,7 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 func sort_drivers_by_position() -> void:
 	times.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
 		return a.position < b.position)
+	drivers_sorted.emit()
 
 
 func update_time(plid: int, position: int, lap: int, node: int, time: float) -> void:
