@@ -5,7 +5,7 @@ extends Node
 signal drivers_sorted
 
 const MAX_CARS_IN_RACE := 40
-const PTH_DECIMATION := 0.1
+const PTH_STEP := 5
 
 var nodes: Array[int] = []
 var times: Array[DriverTimes] = []
@@ -36,7 +36,7 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 		if last_node < first_node:
 			last_node += total_nodes
 		var possible_nodes := last_node - first_node
-		var step := possible_nodes / floorf(possible_nodes * PTH_DECIMATION)
+		var step := possible_nodes / floorf(possible_nodes as float / PTH_STEP)
 		var candidate_node := first_node + step
 		while candidate_node < last_node or is_equal_approx(candidate_node, last_node):
 			nodes[idx] = roundi(candidate_node if candidate_node <= total_nodes \
