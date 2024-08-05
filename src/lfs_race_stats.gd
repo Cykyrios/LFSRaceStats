@@ -1,6 +1,8 @@
 extends MarginContainer
 
 
+@export var target_plid := 0
+
 var insim := InSim.new()
 
 var connections: Array[Connection] = []
@@ -25,7 +27,8 @@ func _ready() -> void:
 	var _discard := timer.timeout.connect(relative_times.sort_drivers_by_position)
 	add_child(timer)
 	timer.start(1)
-	_discard = relative_times.drivers_sorted.connect(update_gaps_between_cars)
+	#_discard = relative_times.drivers_sorted.connect(update_gaps_between_cars)
+	_discard = relative_times.drivers_sorted.connect(update_intervals)
 
 
 func update_gaps_between_cars() -> void:
@@ -61,6 +64,67 @@ func update_gaps_between_cars() -> void:
 		var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
 		label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
 				"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
+
+
+func update_intervals() -> void:
+	if players.is_empty() or not get_player_from_plid(target_plid):
+		return
+	update_intervals_to_plid(target_plid)
+
+
+func update_intervals_to_plid(reference_plid: int) -> void:
+	var target_driver: RelativeTimes.DriverTimes = null
+	for driver in relative_times.times:
+		if driver.plid == reference_plid:
+			target_driver = driver
+			break
+	var panels := players_vbox.get_children()
+	for panel in panels:
+		players_vbox.remove_child(panel)
+	for driver in relative_times.times:
+		var plid := driver.plid
+		for panel in panels:
+			var label := panel.get_child(0) as RichTextLabel
+			if label.get_meta("plid", 0) == plid:
+				players_vbox.add_child(panel)
+				var player := get_player_from_plid(plid)
+				label.text = "%s (PLID %d, UCID %d) - node %d" % \
+						[LFSText.lfs_colors_to_bbcode(player.nickname),
+						player.plid, player.ucid, relative_times.nodes[driver.last_updated_index]]
+				break
+		if plid == reference_plid:
+			continue
+	var target_idx := relative_times.times.find(target_driver)
+	for i in relative_times.times.size():
+		var idx := relative_times.times.size() - 1 - i
+		if idx > target_idx:
+			var driver := relative_times.times[idx]
+			var lap_difference := target_driver.lap - driver.lap
+			if (
+				target_driver.last_updated_index == relative_times.nodes.size() - 1
+				or driver.last_updated_index > target_driver.last_updated_index
+				and driver.last_updated_index != relative_times.nodes.size() - 1
+			):
+				lap_difference -= 1
+			var difference := driver.times[driver.last_updated_index] \
+					- target_driver.times[driver.last_updated_index]
+			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+			label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+					"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
+		elif idx < target_idx:
+			var driver := relative_times.times[idx]
+			var lap_difference := driver.lap - target_driver.lap
+			if (
+				driver.last_updated_index == relative_times.nodes.size() - 1
+				or target_driver.last_updated_index > driver.last_updated_index
+				and target_driver.last_updated_index != relative_times.nodes.size() - 1
+			):
+				lap_difference -= 1
+			var difference := target_driver.times[target_driver.last_updated_index] \
+					- driver.times[target_driver.last_updated_index]
+			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+			label.text += ": %s" % ["%+dL" % [-lap_difference] if lap_difference != 0 else \
+					"%s" % [GISUtils.get_time_string_from_seconds(-difference, 1, true, true)]]
 
 
 func connect_signals() -> void:
