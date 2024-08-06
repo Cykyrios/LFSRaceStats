@@ -7,13 +7,145 @@ var connections: Array[Connection] = []
 var players: Array[Player] = []
 var drivers: Array[Driver] = []
 
+var relative_times := RelativeTimes.new()
+var current_time := 0.0
+var target_plid := 0
+var relative_cars := 7
+
 @onready var map: Map = %Map as Map
+@onready var connections_vbox := %ConnectionsVBox
+@onready var players_vbox := %PlayersVBox
 
 
 func _ready() -> void:
 	add_child(insim)
 	connect_signals()
 	initialize_insim()
+
+	add_child(relative_times)
+	var timer := Timer.new()
+	var _discard := timer.timeout.connect(relative_times.sort_drivers_by_position)
+	add_child(timer)
+	timer.start(1)
+	#_discard = relative_times.drivers_sorted.connect(update_gaps_between_cars)
+	_discard = relative_times.drivers_sorted.connect(update_intervals)
+
+
+func update_gaps_between_cars() -> void:
+	var panels := players_vbox.get_children()
+	for panel in panels:
+		players_vbox.remove_child(panel)
+	for driver in relative_times.times:
+		var plid := driver.plid
+		for panel in panels:
+			var label := panel.get_child(0) as RichTextLabel
+			if label.get_meta("plid", 0) == plid:
+				players_vbox.add_child(panel)
+				var player := get_player_from_plid(plid)
+				label.text = "%s (PLID %d, UCID %d) - node %d" % \
+						[LFSText.lfs_colors_to_bbcode(player.nickname),
+						player.plid, player.ucid, relative_times.nodes[driver.last_updated_index]]
+				break
+	for i in relative_times.times.size():
+		var idx := relative_times.times.size() - 1 - i
+		if idx == 0:
+			return
+		var driver := relative_times.times[idx]
+		var driver_in_front := relative_times.times[idx - 1]
+		var lap_difference := driver_in_front.lap - driver.lap
+		if (
+			driver_in_front.last_updated_index == relative_times.nodes.size() - 1
+			or driver.last_updated_index > driver_in_front.last_updated_index
+			and driver.last_updated_index != relative_times.nodes.size() - 1
+		):
+			lap_difference -= 1
+		var difference := driver.times[driver.last_updated_index] \
+				- driver_in_front.times[driver.last_updated_index]
+		var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+		label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+				"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
+
+
+func update_intervals() -> void:
+	if players.is_empty() or not get_player_from_plid(target_plid):
+		return
+	update_intervals_to_plid(target_plid)
+
+
+func update_intervals_to_plid(reference_plid: int) -> void:
+	var target_idx := -1
+	for i in relative_times.times.size():
+		var driver := relative_times.times[i]
+		if driver.plid == reference_plid:
+			target_idx = i
+			break
+	var target_driver := relative_times.times[target_idx]
+	var total_cars := relative_times.times.size()
+	var max_cars := floori(relative_cars / 2.0) * 2 + 1
+	var first_idx := target_idx - floori(max_cars / 2.0)
+	var last_idx := target_idx + floori(max_cars / 2.0)
+	if max_cars > total_cars:
+		first_idx = 0
+		last_idx = total_cars - 1
+	elif first_idx < 0:
+		var offset := -first_idx
+		first_idx += offset
+		last_idx += offset
+	elif last_idx >= total_cars:
+		var offset := last_idx - total_cars + 1
+		first_idx -= offset
+		last_idx -= offset
+	var displayed_cars := last_idx - first_idx + 1
+	var panels: Array[PanelContainer] = []
+	panels.assign(players_vbox.get_children())
+	for panel in panels:
+		panel.visible = false
+		players_vbox.remove_child(panel)
+	for i in displayed_cars:
+		var idx := first_idx + i
+		var driver := relative_times.times[idx]
+		var plid := driver.plid
+		for panel in panels:
+			var label := panel.get_child(0) as RichTextLabel
+			if label.get_meta("plid", 0) == plid:
+				panel.visible = true
+				players_vbox.add_child(panel)
+				var player := get_player_from_plid(plid)
+				label.text = "%-3d\t%-24s" % [driver.position,
+						LFSText.lfs_colors_to_bbcode(player.nickname)]
+				break
+	for panel in panels:
+		if not panel.get_parent():
+			players_vbox.add_child(panel)
+	for i in displayed_cars:
+		var idx := last_idx - i
+		var driver_front: RelativeTimes.DriverTimes = null
+		var driver_back: RelativeTimes.DriverTimes = null
+		var lap_difference := 0
+		var time_difference := 0.0
+		if idx > target_idx:
+			driver_front = target_driver
+			driver_back = relative_times.times[idx]
+		elif idx < target_idx:
+			driver_front = relative_times.times[idx]
+			driver_back = target_driver
+		else:
+			continue
+		lap_difference = driver_front.lap - driver_back.lap
+		if (
+			driver_front.last_updated_index == relative_times.nodes.size() - 1
+			or driver_back.last_updated_index > driver_front.last_updated_index
+			and driver_back.last_updated_index != relative_times.nodes.size() - 1
+		):
+			lap_difference -= 1
+		time_difference = driver_back.times[driver_back.last_updated_index] \
+				- driver_front.times[driver_back.last_updated_index]
+		if idx < target_idx:
+			lap_difference = -lap_difference
+			time_difference = -time_difference
+		var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
+		label.text += "\t%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+				"%s" % [GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]]
 
 
 func connect_signals() -> void:
@@ -41,6 +173,7 @@ func connect_signals() -> void:
 	_discard = insim.isp_spx_received.connect(_on_spx_received)
 	_discard = insim.isp_sta_received.connect(_on_sta_received)
 	_discard = insim.isp_toc_received.connect(_on_toc_received)
+	_discard = insim.small_rtp_received.connect(_on_small_rtp_received)
 	_discard = insim.small_vta_received.connect(_on_small_vta_received)
 	_discard = insim.tiny_ren_received.connect(_on_tiny_ren_received)
 	_discard = insim.packet_received.connect(_on_packet_received)
@@ -51,7 +184,7 @@ func initialize_insim() -> void:
 	var init_data := InSimInitializationData.new()
 	init_data.i_name = "GIS Race Stats"
 	init_data.flags |= InSim.InitFlag.ISF_LOCAL | InSim.InitFlag.ISF_MCI
-	init_data.interval = 250
+	init_data.interval = 100
 	insim.initialize("127.0.0.1", 29999, init_data)
 
 
@@ -145,6 +278,7 @@ func _on_insim_connected() -> void:
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RES))
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RST))
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_SST))
 
 
 func _on_cnl_received(packet: InSimCNLPacket) -> void:
@@ -154,6 +288,11 @@ func _on_cnl_received(packet: InSimCNLPacket) -> void:
 		return
 	Logger.log_message("%s (%s, UCID %d) left." % [LFSText.strip_colors(connection.nickname),
 			connection.username, connection.ucid])
+	for panel: PanelContainer in connections_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("ucid", -1) == connection.ucid:
+			panel.queue_free()
+			break
 	connections.erase(connection)
 
 
@@ -169,12 +308,24 @@ func _on_cpr_received(packet: InSimCPRPacket) -> void:
 	Logger.log_message("%s (UCID %d) renamed to %s (plate %s)." % [LFSText.strip_colors(old_name),
 			ucid, LFSText.strip_colors(new_name), new_plate])
 	connection.nickname = new_name
+	for panel: PanelContainer in connections_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("ucid") == ucid:
+			label.text = "%s (%s, UCID %d)" % [LFSText.lfs_colors_to_bbcode(connection.nickname),
+				LFSText.lfs_colors_to_bbcode(connection.username), connection.ucid]
+			break
 	var player := get_player_from_ucid(ucid)
 	if not player:
 		push_error("Could not find player from UCID %d" % [connection.ucid])
 		return
 	player.nickname = new_name
 	player.plate = new_plate
+	for panel: PanelContainer in players_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("plid") == player.plid:
+			label.text = "%s (PLID %d, UCID %d)" % [LFSText.lfs_colors_to_bbcode(player.nickname),
+				player.plid, player.ucid]
+		break
 
 
 func _on_crs_received(packet: InSimCRSPacket) -> void:
@@ -223,8 +374,13 @@ func _on_lap_received(packet: InSimLAPPacket) -> void:
 
 
 func _on_mci_received(packet: InSimMCIPacket) -> void:
+	var time_request := InSimTinyPacket.new(1, InSim.Tiny.TINY_GTH)
+	insim.send_packet(time_request)
+	await insim.small_rtp_received
 	for compcar in packet.info:
 		map.update_arrow(compcar)
+		relative_times.update_time(compcar.plid, compcar.position, compcar.lap,
+				compcar.node, current_time)
 
 
 func _on_mso_received(packet: InSimMSOPacket) -> void:
@@ -245,6 +401,24 @@ func _on_ncn_received(packet: InSimNCNPacket) -> void:
 		connections.append(connection)
 	connection.fill_info(packet)
 	if new_connection:
+		var panel := PanelContainer.new()
+		var stylebox := StyleBoxFlat.new()
+		stylebox.bg_color = Color.hex(0x50505099)
+		stylebox.content_margin_top = 4
+		stylebox.content_margin_left = 4
+		stylebox.content_margin_bottom = 4
+		stylebox.content_margin_right = 4
+		panel.add_theme_stylebox_override("panel", stylebox)
+		var label := RichTextLabel.new()
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.add_theme_color_override("default_color", Color.hex(0xccccccff))
+		label.text = "%s (%s, UCID %d)" % [LFSText.lfs_colors_to_bbcode(connection.nickname),
+				LFSText.lfs_colors_to_bbcode(connection.username), connection.ucid]
+		label.set_meta("ucid", connection.ucid)
+		panel.add_child(label)
+		connections_vbox.add_child(panel)
 		Logger.log_message("New connection: %s (%s, UCID %d)." % \
 				[LFSText.strip_colors(connection.nickname), connection.username, connection.ucid])
 
@@ -262,6 +436,24 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 	if connection and packet.player_name == connection.nickname:
 		connection.plid = plid
 	if new_player:
+		var panel := PanelContainer.new()
+		var stylebox := StyleBoxFlat.new()
+		stylebox.bg_color = Color.hex(0x50505099)
+		stylebox.content_margin_top = 4
+		stylebox.content_margin_left = 4
+		stylebox.content_margin_bottom = 4
+		stylebox.content_margin_right = 4
+		panel.add_theme_stylebox_override("panel", stylebox)
+		var label := RichTextLabel.new()
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.add_theme_color_override("default_color", Color.hex(0xccccccff))
+		label.text = "%s (PLID %d, UCID %d)" % [LFSText.lfs_colors_to_bbcode(player.nickname),
+				player.plid, player.ucid]
+		label.set_meta("plid", player.plid)
+		panel.add_child(label)
+		players_vbox.add_child(panel)
 		Logger.log_message("New player joined: %s (PLID %d, %s)." % \
 				[LFSText.strip_colors(player.nickname), player.plid, packet.car_name])
 
@@ -310,6 +502,11 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 func _on_pll_received(packet: InSimPLLPacket) -> void:
 	var plid := packet.plid
 	var player := get_player_from_plid(plid)
+	for panel: PanelContainer in players_vbox.get_children():
+		var label := panel.get_child(0) as RichTextLabel
+		if label.get_meta("plid", -1) == plid:
+			panel.queue_free()
+			break
 	players.erase(player)
 	var connection := get_connection_from_plid(plid)
 	if connection:
@@ -356,9 +553,9 @@ func _on_res_received(packet: InSimRESPacket) -> void:
 func _on_rst_received(packet: InSimRSTPacket) -> void:
 	if packet.req_i == 0:
 		Logger.log_message("Session started.")
-	print("Nodes in track: %d" % [packet.num_nodes])
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
+	relative_times.initialize(packet, players)
 
 
 func _on_slc_received(packet: InSimSLCPacket) -> void:
@@ -379,6 +576,9 @@ func _on_spx_received(packet: InSimSPXPacket) -> void:
 
 
 func _on_sta_received(packet: InSimSTAPacket) -> void:
+	var viewed_plid := packet.view_plid
+	if viewed_plid != 0:
+		target_plid = viewed_plid
 	var game_paused := packet.flags & InSim.State.ISS_PAUSED
 	if game_paused:
 		map.pause()
@@ -392,6 +592,10 @@ func _on_toc_received(packet: InSimTOCPacket) -> void:
 	Logger.log_message("Driver change for PLID %d: %s (UCID %d) took over from %s (UCID %d)." % \
 			[packet.plid, LFSText.strip_colors(new_connection.nickname), packet.new_ucid,
 			LFSText.strip_colors(old_connection.nickname), packet.old_ucid])
+
+
+func _on_small_rtp_received(packet: InSimSmallPacket) -> void:
+	current_time = packet.value / 100.0
 
 
 func _on_small_vta_received(packet: InSimSmallPacket) -> void:
@@ -447,6 +651,7 @@ func _on_packet_received(packet: InSimPacket) -> void:
 			InSim.Tiny.TINY_REPLY,
 			InSim.Tiny.TINY_VTC,
 		] or packet is InSimSmallPacket and (packet as InSimSmallPacket).sub_type in [
+			InSim.Small.SMALL_RTP,
 			InSim.Small.SMALL_VTA,
 		]
 	):
