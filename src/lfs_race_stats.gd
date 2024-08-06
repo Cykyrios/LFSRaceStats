@@ -119,34 +119,33 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			players_vbox.add_child(panel)
 	for i in displayed_cars:
 		var idx := last_idx - i
+		var driver_front: RelativeTimes.DriverTimes = null
+		var driver_back: RelativeTimes.DriverTimes = null
+		var lap_difference := 0
+		var time_difference := 0.0
 		if idx > target_idx:
-			var driver := relative_times.times[idx]
-			var lap_difference := target_driver.lap - driver.lap
-			if (
-				target_driver.last_updated_index == relative_times.nodes.size() - 1
-				or driver.last_updated_index > target_driver.last_updated_index
-				and driver.last_updated_index != relative_times.nodes.size() - 1
-			):
-				lap_difference -= 1
-			var difference := driver.times[driver.last_updated_index] \
-					- target_driver.times[driver.last_updated_index]
-			var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
-			label.text += "\t%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
-					"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
+			driver_front = target_driver
+			driver_back = relative_times.times[idx]
 		elif idx < target_idx:
-			var driver := relative_times.times[idx]
-			var lap_difference := driver.lap - target_driver.lap
-			if (
-				driver.last_updated_index == relative_times.nodes.size() - 1
-				or target_driver.last_updated_index > driver.last_updated_index
-				and target_driver.last_updated_index != relative_times.nodes.size() - 1
-			):
-				lap_difference -= 1
-			var difference := target_driver.times[target_driver.last_updated_index] \
-					- driver.times[target_driver.last_updated_index]
-			var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
-			label.text += "\t%s" % ["%+dL" % [-lap_difference] if lap_difference != 0 else \
-					"%s" % [GISUtils.get_time_string_from_seconds(-difference, 1, true, true)]]
+			driver_front = relative_times.times[idx]
+			driver_back = target_driver
+		else:
+			continue
+		lap_difference = driver_front.lap - driver_back.lap
+		if (
+			driver_front.last_updated_index == relative_times.nodes.size() - 1
+			or driver_back.last_updated_index > driver_front.last_updated_index
+			and driver_back.last_updated_index != relative_times.nodes.size() - 1
+		):
+			lap_difference -= 1
+		time_difference = driver_back.times[driver_back.last_updated_index] \
+				- driver_front.times[driver_back.last_updated_index]
+		if idx < target_idx:
+			lap_difference = -lap_difference
+			time_difference = -time_difference
+		var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
+		label.text += "\t%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+				"%s" % [GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]]
 
 
 func connect_signals() -> void:
