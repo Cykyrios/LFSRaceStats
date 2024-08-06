@@ -10,6 +10,7 @@ var drivers: Array[Driver] = []
 var relative_times := RelativeTimes.new()
 var current_time := 0.0
 var target_plid := 0
+var relative_cars := 7
 
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
@@ -72,29 +73,52 @@ func update_intervals() -> void:
 
 
 func update_intervals_to_plid(reference_plid: int) -> void:
-	var target_driver: RelativeTimes.DriverTimes = null
-	for driver in relative_times.times:
+	var target_idx := -1
+	for i in relative_times.times.size():
+		var driver := relative_times.times[i]
 		if driver.plid == reference_plid:
-			target_driver = driver
+			target_idx = i
 			break
-	var panels := players_vbox.get_children()
+	var target_driver := relative_times.times[target_idx]
+	var total_cars := relative_times.times.size()
+	var max_cars := floori(relative_cars / 2.0) * 2 + 1
+	var first_idx := target_idx - floori(max_cars / 2.0)
+	var last_idx := target_idx + floori(max_cars / 2.0)
+	if max_cars > total_cars:
+		first_idx = 0
+		last_idx = total_cars - 1
+	elif first_idx < 0:
+		var offset := -first_idx
+		first_idx += offset
+		last_idx += offset
+	elif last_idx >= total_cars:
+		var offset := last_idx - total_cars + 1
+		first_idx -= offset
+		last_idx -= offset
+	var displayed_cars := last_idx - first_idx + 1
+	var panels: Array[PanelContainer] = []
+	panels.assign(players_vbox.get_children())
 	for panel in panels:
+		panel.visible = false
 		players_vbox.remove_child(panel)
-	for driver in relative_times.times:
+	for i in displayed_cars:
+		var idx := first_idx + i
+		var driver := relative_times.times[idx]
 		var plid := driver.plid
 		for panel in panels:
 			var label := panel.get_child(0) as RichTextLabel
 			if label.get_meta("plid", 0) == plid:
+				panel.visible = true
 				players_vbox.add_child(panel)
 				var player := get_player_from_plid(plid)
 				label.text = "%-3d\t%-24s" % [driver.position,
 						LFSText.lfs_colors_to_bbcode(player.nickname)]
 				break
-		if plid == reference_plid:
-			continue
-	var target_idx := relative_times.times.find(target_driver)
-	for i in relative_times.times.size():
-		var idx := relative_times.times.size() - 1 - i
+	for panel in panels:
+		if not panel.get_parent():
+			players_vbox.add_child(panel)
+	for i in displayed_cars:
+		var idx := last_idx - i
 		if idx > target_idx:
 			var driver := relative_times.times[idx]
 			var lap_difference := target_driver.lap - driver.lap
@@ -106,7 +130,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 				lap_difference -= 1
 			var difference := driver.times[driver.last_updated_index] \
 					- target_driver.times[driver.last_updated_index]
-			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+			var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
 			label.text += "\t%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
 					"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
 		elif idx < target_idx:
@@ -120,7 +144,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 				lap_difference -= 1
 			var difference := target_driver.times[target_driver.last_updated_index] \
 					- driver.times[target_driver.last_updated_index]
-			var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+			var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
 			label.text += "\t%s" % ["%+dL" % [-lap_difference] if lap_difference != 0 else \
 					"%s" % [GISUtils.get_time_string_from_seconds(-difference, 1, true, true)]]
 
