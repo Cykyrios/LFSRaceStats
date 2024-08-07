@@ -388,6 +388,9 @@ func _on_insim_connected() -> void:
 func _on_bfn_received(packet: InSimBFNPacket) -> void:
 	if packet.subtype == InSim.ButtonFunction.BFN_USER_CLEAR:
 		clear_insim_buttons()
+		var msl_packet := InSimMSLPacket.new()
+		msl_packet.msg = "InSim buttons disabled, press Shift+B to re-enable."
+		insim.send_packet(msl_packet)
 	elif packet.subtype == InSim.ButtonFunction.BFN_REQUEST:
 		show_insim_buttons = true
 		add_insim_relative_buttons(0)
