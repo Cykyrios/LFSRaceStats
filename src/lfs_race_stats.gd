@@ -127,6 +127,13 @@ func reinitialize_relative_times() -> void:
 	relative_times.reinitialize(players)
 
 
+func request_connection_player_list() -> void:
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NCN))
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
+	await insim.isp_npl_received
+	await get_tree().process_frame
+
+
 func update_gaps_between_cars() -> void:
 	var panels := players_vbox.get_children()
 	for panel in panels:
@@ -669,6 +676,7 @@ func _on_psf_received(packet: InSimPSFPacket) -> void:
 
 
 func _on_reo_received(packet: InSimREOPacket) -> void:
+	await request_connection_player_list()
 	Logger.log_message("Starting grid:")
 	for i in packet.plids.size():
 		var id := packet.plids[i]
@@ -689,6 +697,7 @@ func _on_res_received(packet: InSimRESPacket) -> void:
 
 
 func _on_rst_received(packet: InSimRSTPacket) -> void:
+	await request_connection_player_list()
 	if packet.req_i == 0:
 		Logger.log_message("Session started.")
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
