@@ -2,8 +2,6 @@ class_name RelativeTimes
 extends Node
 
 
-signal drivers_sorted
-
 const MAX_CARS_IN_RACE := 40
 const PTH_STEP := 1
 
@@ -53,10 +51,58 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 		times.append(driver_times)
 
 
-func sort_drivers_by_position() -> void:
-	times.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+func sort_drivers_by_position() -> Array[DriverTimes]:
+	var sorted_drivers: Array[DriverTimes] = times.duplicate() as Array[DriverTimes]
+	sorted_drivers.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
 		return a.position < b.position)
-	drivers_sorted.emit()
+	return sorted_drivers
+
+
+func sort_drivers_by_proximity(reference_plid: int) -> Array[DriverTimes]:
+	var reference_driver: DriverTimes = null
+	for driver in times:
+		if driver.plid == reference_plid:
+			reference_driver = driver
+			break
+	var drivers_in_front: Array[DriverTimes] = []
+	var drivers_behind: Array[DriverTimes] = []
+	var half_count := nodes.size() / 2.0
+	var reference_idx := reference_driver.last_updated_index
+	for driver in times:
+		if driver == reference_driver:
+			continue
+		var idx := driver.last_updated_index
+		var difference := idx - reference_idx
+		var abs_difference := absi(difference)
+		var behind := true if (difference < 0 and abs_difference < half_count
+		or difference > 0 and abs_difference > half_count) else false
+		if behind:
+			drivers_behind.append(driver)
+		else:
+			drivers_in_front.append(driver)
+	drivers_behind.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+		var difference_a := a.last_updated_index - reference_driver.last_updated_index
+		var difference_b := b.last_updated_index - reference_driver.last_updated_index
+		if difference_a > 0:
+			difference_a -= nodes.size()
+		if difference_b > 0:
+			difference_b -= nodes.size()
+		return difference_a > difference_b
+	)
+	drivers_in_front.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+		var difference_a := a.last_updated_index - reference_driver.last_updated_index
+		var difference_b := b.last_updated_index - reference_driver.last_updated_index
+		if difference_a < 0:
+			difference_a += nodes.size()
+		if difference_b < 0:
+			difference_b += nodes.size()
+		return difference_a > difference_b
+	)
+	var sorted_drivers: Array[DriverTimes] = []
+	sorted_drivers.append_array(drivers_in_front)
+	sorted_drivers.append(reference_driver)
+	sorted_drivers.append_array(drivers_behind)
+	return sorted_drivers
 
 
 func update_position(plid: int, position: int) -> void:
