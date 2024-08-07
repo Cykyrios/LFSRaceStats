@@ -54,11 +54,11 @@ func add_insim_relative_buttons(num_cars: int) -> void:
 	var fields_per_row := 4
 	var margin := 1
 	var spacing := 0
-	var button_height := 5
+	var button_height := 4
 	var overall_pos_width := 3
 	var class_pos_width := 3
-	var driver_name_width := 20
-	var interval_width := 10
+	var driver_name_width := 12
+	var interval_width := 7
 	var total_width := overall_pos_width + class_pos_width + driver_name_width + interval_width \
 			+ 3 * spacing + 2 * margin
 	var total_height := (num_cars + 1) * button_height + num_cars * spacing + 2 * margin
