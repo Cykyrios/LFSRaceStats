@@ -41,6 +41,10 @@ func get_date_time_string() -> String:
 	return Time.get_datetime_string_from_system(true, true)
 
 
+func log_error(packet: InSimPacket, message: String) -> void:
+	log_message("Error: %s - %s" % [InSim.Packet.keys()[packet.type], message])
+
+
 func log_message(message: String) -> void:
 	if not file_open:
 		return
@@ -56,6 +60,10 @@ func log_packet(packet: InSimPacket) -> void:
 	file.store_line("%s - %s" % [get_date_time_string(), packet_string])
 	if flush_timer.is_stopped():
 		flush_timer.start(FLUSH_INTERVAL)
+
+
+func log_warning(packet: InSimPacket, message: String) -> void:
+	log_message("Warning: %s - %s" % [InSim.Packet.keys()[packet.type], message])
 
 
 func _on_flush_timer_timeout() -> void:
