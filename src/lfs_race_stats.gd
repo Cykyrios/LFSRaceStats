@@ -28,11 +28,9 @@ func _ready() -> void:
 	add_child(relative_times)
 	var _discard := relative_times.reinitialization_requested.connect(reinitialize_relative_times)
 	var timer := Timer.new()
-	_discard = timer.timeout.connect(relative_times.sort_drivers_by_position)
+	_discard = timer.timeout.connect(update_intervals)
 	add_child(timer)
 	timer.start(1)
-	#_discard = relative_times.drivers_sorted.connect(update_gaps_between_cars)
-	_discard = relative_times.drivers_sorted.connect(update_intervals)
 
 
 func add_insim_relative_buttons(num_cars: int) -> void:
@@ -176,18 +174,19 @@ func update_intervals() -> void:
 
 
 func update_intervals_to_plid(reference_plid: int) -> void:
-	var target_idx := -1
-	for i in relative_times.times.size():
-		var driver := relative_times.times[i]
+	var sorted_drivers := relative_times.sort_drivers_by_proximity(reference_plid)
+	var target_driver: RelativeTimes.DriverTimes = null
+	for driver in sorted_drivers:
 		if driver.plid == reference_plid:
-			target_idx = i
+			target_driver = driver
 			break
-	var target_driver := relative_times.times[target_idx]
-	var total_cars := relative_times.times.size()
-	var max_cars := floori(relative_cars / 2.0) * 2 + 1
+	var total_cars := sorted_drivers.size()
+	var half_relative_cars := floori(relative_cars / 2.0)
+	var max_cars := half_relative_cars * 2 + 1
+	var target_idx := sorted_drivers.find(target_driver)
 	var first_idx := target_idx - floori(max_cars / 2.0)
 	var last_idx := target_idx + floori(max_cars / 2.0)
-	if max_cars > total_cars:
+	if max_cars >= total_cars:
 		first_idx = 0
 		last_idx = total_cars - 1
 	elif first_idx < 0:
@@ -210,7 +209,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 		players_vbox.remove_child(panel)
 	for i in displayed_cars:
 		var idx := first_idx + i
-		var driver := relative_times.times[idx]
+		var driver := sorted_drivers[idx]
 		var plid := driver.plid
 		for panel in panels:
 			var label := panel.get_child(0) as RichTextLabel
@@ -230,15 +229,16 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			players_vbox.add_child(panel)
 	for i in displayed_cars:
 		var idx := last_idx - i
+		var driver := sorted_drivers[idx]
 		var driver_front: RelativeTimes.DriverTimes = null
 		var driver_back: RelativeTimes.DriverTimes = null
 		var lap_difference := 0
 		var time_difference := 0.0
-		if idx > target_idx:
+		if driver.position > target_driver.position:
 			driver_front = target_driver
-			driver_back = relative_times.times[idx]
-		elif idx < target_idx:
-			driver_front = relative_times.times[idx]
+			driver_back = sorted_drivers[idx]
+		elif driver.position < target_driver.position:
+			driver_front = sorted_drivers[idx]
 			driver_back = target_driver
 		else:
 			if show_insim_buttons:
