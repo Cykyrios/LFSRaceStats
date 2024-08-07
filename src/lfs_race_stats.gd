@@ -458,6 +458,9 @@ func _on_crs_received(packet: InSimCRSPacket) -> void:
 
 func _on_csc_received(packet: InSimCSCPacket) -> void:
 	var player := get_player_from_plid(packet.plid)
+	if not player:
+		Logger.log_error(packet, "Could not get Player from PLID.")
+		return
 	Logger.log_message("%s %s." % [LFSText.strip_colors(player.nickname),
 			"started" if packet.csc_action == InSim.CSCAction.CSC_START else "stopped"])
 
@@ -513,6 +516,14 @@ func _on_mso_received(packet: InSimMSOPacket) -> void:
 	var message := LFSText.strip_colors(packet.msg)
 	if packet.user_type == InSim.MessageUserValue.MSO_USER:
 		var connection := get_connection_from_ucid(packet.ucid)
+		if not connection:
+			Logger.log_error(packet, "Could not get Connection from UCID.")
+			insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NCN))
+			await insim.isp_ncn_received
+			await get_tree().process_frame
+			connection = get_connection_from_ucid(packet.ucid)
+			if not connection:
+				return
 		message = "%s (%s) - %s" % [LFSText.strip_colors(connection.nickname),
 				connection.username, message]
 	Logger.log_message(message)
@@ -664,6 +675,9 @@ func _on_reo_received(packet: InSimREOPacket) -> void:
 		if id == 0:
 			break
 		var player := get_player_from_plid(id)
+		if not player:
+			Logger.log_error(packet, "Could not get Player from PLID.")
+			continue
 		Logger.log_message("P%d: %s" % [i + 1, LFSText.strip_colors(player.nickname)])
 
 
