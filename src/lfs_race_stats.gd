@@ -252,7 +252,6 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 
 func connect_signals() -> void:
 	var _discard := insim.isp_bfn_received.connect(_on_bfn_received)
-	_discard = insim.isp_cim_received.connect(_on_cim_received)
 	_discard = insim.isp_cnl_received.connect(_on_cnl_received)
 	_discard = insim.isp_cpr_received.connect(_on_cpr_received)
 	_discard = insim.isp_crs_received.connect(_on_crs_received)
@@ -390,14 +389,6 @@ func _on_bfn_received(packet: InSimBFNPacket) -> void:
 	if packet.subtype == InSim.ButtonFunction.BFN_USER_CLEAR:
 		clear_insim_buttons()
 	elif packet.subtype == InSim.ButtonFunction.BFN_REQUEST:
-		show_insim_buttons = true
-		add_insim_relative_buttons(0)
-
-
-func _on_cim_received(packet: InSimCIMPacket) -> void:
-	if packet.mode != InSim.InterfaceMode.CIM_NORMAL:
-		clear_insim_buttons()
-	else:
 		show_insim_buttons = true
 		add_insim_relative_buttons(0)
 
