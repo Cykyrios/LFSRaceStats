@@ -233,28 +233,35 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			players_vbox.add_child(panel)
 	for i in displayed_cars:
 		var idx := last_idx - i
-		var driver := sorted_drivers[idx]
 		var driver_front: RelativeTimes.DriverTimes = null
 		var driver_back: RelativeTimes.DriverTimes = null
 		var lap_difference := 0
 		var time_difference := 0.0
-		if driver.position > target_driver.position:
+		if idx > target_idx:
 			driver_front = target_driver
 			driver_back = sorted_drivers[idx]
-		elif driver.position < target_driver.position:
+		elif idx < target_idx:
 			driver_front = sorted_drivers[idx]
 			driver_back = target_driver
 		else:
 			if show_insim_buttons:
 				fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4, "---")
 			continue
-		lap_difference = driver_front.lap - driver_back.lap
+		var lapping := false
 		if (
-			driver_front.last_updated_index == relative_times.nodes.size() - 1
-			or driver_back.last_updated_index > driver_front.last_updated_index
-			and driver_back.last_updated_index != relative_times.nodes.size() - 1
+			absi(idx - target_idx) < absi(driver_back.position - driver_front.position)
+			or absi(idx - target_idx) == -absi(driver_back.position - driver_front.position)
 		):
-			lap_difference -= 1
+			lapping = true
+			lap_difference = 0
+		else:
+			lap_difference = driver_front.lap - driver_back.lap
+			if (
+				driver_front.last_updated_index == relative_times.nodes.size() - 1
+				or driver_back.last_updated_index > driver_front.last_updated_index
+				and driver_back.last_updated_index != relative_times.nodes.size() - 1
+			):
+				lap_difference -= 1
 		time_difference = driver_back.times[driver_back.last_updated_index] \
 				- driver_front.times[driver_back.last_updated_index]
 		if idx < target_idx:
@@ -266,7 +273,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 		label.text += "\t%s" % [interval_string]
 		if show_insim_buttons:
 			fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4,
-					"^%d%s" % [1 if idx < target_idx else 2, interval_string])
+					"^%d%s" % [6 if lapping else 1 if idx < target_idx else 2, interval_string])
 
 
 func connect_signals() -> void:
