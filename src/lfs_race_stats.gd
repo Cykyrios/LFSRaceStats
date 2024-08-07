@@ -253,27 +253,32 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			or absi(idx - target_idx) == -absi(driver_back.position - driver_front.position)
 		):
 			lapping = true
-			lap_difference = 0
-		else:
-			lap_difference = driver_front.lap - driver_back.lap
-			if (
-				driver_front.last_updated_index == relative_times.nodes.size() - 1
-				or driver_back.last_updated_index > driver_front.last_updated_index
-				and driver_back.last_updated_index != relative_times.nodes.size() - 1
-			):
-				lap_difference -= 1
+		lap_difference = driver_front.lap - driver_back.lap
+		if (
+			driver_front.last_updated_index == relative_times.nodes.size() - 1
+			or driver_back.last_updated_index > driver_front.last_updated_index
+			and driver_back.last_updated_index != relative_times.nodes.size() - 1
+		):
+			lap_difference -= 1
+		if lap_difference != 0:
+			lapping = true
 		time_difference = driver_back.times[driver_back.last_updated_index] \
 				- driver_front.times[driver_back.last_updated_index]
 		if idx < target_idx:
 			lap_difference = -lap_difference
 			time_difference = -time_difference
-		var interval_string := "%s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
-				"%s" % [GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]]
+		var interval_string := "%s" % \
+				[GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]
+		var lapping_string := "%+dL" % [lap_difference]
+		if lapping and lap_difference == 0:
+			lapping = false
 		var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
-		label.text += "\t%s" % [interval_string]
+		label.text += "\t%s" % [interval_string] + (" (%s)" % [lapping_string] if lapping else "")
 		if show_insim_buttons:
 			fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4,
-					"^%d%s" % [6 if lapping else 1 if idx < target_idx else 2, interval_string])
+					"^%d%s" % [6 if lap_difference < 0 else 5 if lap_difference > 0 \
+					else 1 if idx < target_idx else 2, interval_string]
+					+ (" (%s)" % [lapping_string] if lapping else ""))
 
 
 func connect_signals() -> void:
