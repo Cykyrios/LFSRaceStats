@@ -759,6 +759,7 @@ func _on_packet_received(packet: InSimPacket) -> void:
 			InSim.Packet.ISP_PIT,
 			InSim.Packet.ISP_PLA,
 			InSim.Packet.ISP_PLL,
+			InSim.Packet.ISP_PLP,
 			InSim.Packet.ISP_PSF,
 			InSim.Packet.ISP_REO,
 			InSim.Packet.ISP_RES,
