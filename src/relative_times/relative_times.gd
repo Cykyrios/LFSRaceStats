@@ -2,11 +2,17 @@ class_name RelativeTimes
 extends Node
 
 
+signal reinitialization_requested
+
 const MAX_CARS_IN_RACE := 40
 const PTH_STEP := 1
 
 var nodes: Array[int] = []
 var times: Array[DriverTimes] = []
+
+
+func clear_times() -> void:
+	times.clear()
 
 
 func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
@@ -45,10 +51,22 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 	print("RelativeTimes kept %d nodes from %d total." % [nodes.size(), total_nodes])
 	if packet.num_players != players.size():
 		push_error("RelativeTimes encountered a mismatch in player count.")
+		reinitialization_requested.emit()
 		return
+	reinitialize(players)
+
+
+func reinitialize(players: Array[Player]) -> void:
 	for player in players:
 		var driver_times := DriverTimes.new(player.plid, nodes.size())
 		times.append(driver_times)
+
+
+func remove_driver(plid: int) -> void:
+	for i in times.size():
+		if times[i].plid == plid:
+			times.remove_at(i)
+			return
 
 
 func sort_drivers_by_position() -> Array[DriverTimes]:
@@ -128,6 +146,7 @@ func update_time(plid: int, position: int, lap: int, node: int, time: float) -> 
 			driver.last_updated_index = idx
 			return
 	push_warning("RelativeTimes could not update time for PLID %d: not found." % [plid])
+	reinitialization_requested.emit()
 
 
 class DriverTimes extends RefCounted:

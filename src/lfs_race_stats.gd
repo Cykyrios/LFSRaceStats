@@ -26,8 +26,9 @@ func _ready() -> void:
 	initialize_insim()
 
 	add_child(relative_times)
+	var _discard := relative_times.reinitialization_requested.connect(reinitialize_relative_times)
 	var timer := Timer.new()
-	var _discard := timer.timeout.connect(relative_times.sort_drivers_by_position)
+	_discard = timer.timeout.connect(relative_times.sort_drivers_by_position)
 	add_child(timer)
 	timer.start(1)
 	#_discard = relative_times.drivers_sorted.connect(update_gaps_between_cars)
@@ -117,6 +118,13 @@ func fill_in_insim_button(id: int, text: String) -> void:
 	packet.click_id = id
 	packet.text = text
 	insim.send_packet(packet)
+
+
+func reinitialize_relative_times() -> void:
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
+	await insim.isp_npl_received
+	await get_tree().process_frame
+	relative_times.reinitialize(players)
 
 
 func update_gaps_between_cars() -> void:
