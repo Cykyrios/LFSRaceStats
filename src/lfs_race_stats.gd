@@ -202,7 +202,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 		first_idx -= offset
 		last_idx -= offset
 	var displayed_cars := last_idx - first_idx + 1
-	if show_insim_buttons and absi(displayed_cars - insim_buttons_num_cars) > 1:
+	if show_insim_buttons and absi(displayed_cars - insim_buttons_num_cars) >= 1:
 		clear_insim_buttons()
 		add_insim_relative_buttons(displayed_cars)
 		insim_buttons_num_cars = displayed_cars

@@ -57,6 +57,7 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 
 
 func reinitialize(players: Array[Player]) -> void:
+	times.clear()
 	for player in players:
 		var driver_times := DriverTimes.new(player.plid, nodes.size())
 		times.append(driver_times)
@@ -65,6 +66,7 @@ func reinitialize(players: Array[Player]) -> void:
 func remove_driver(plid: int) -> void:
 	for i in times.size():
 		if times[i].plid == plid:
+			times[i].clear()
 			times.remove_at(i)
 			return
 
