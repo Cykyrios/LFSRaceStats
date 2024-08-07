@@ -377,12 +377,13 @@ func _get_driver_from_connection(connection: Connection) -> Driver:
 
 #region InSim callbacks
 func _on_insim_connected() -> void:
-	await get_tree().create_timer(1).timeout
+	await get_tree().create_timer(0.1).timeout
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NCN))
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
-	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RES))
-	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RST))
+	await get_tree().create_timer(0.1).timeout
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_SST))
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RST))
+	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_RES))
 
 
 func _on_bfn_received(packet: InSimBFNPacket) -> void:
