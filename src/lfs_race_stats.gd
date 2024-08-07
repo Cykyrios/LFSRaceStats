@@ -133,6 +133,8 @@ func request_connection_player_list() -> void:
 
 
 func update_gaps_between_cars() -> void:
+	if relative_times.times.is_empty():
+		return
 	var panels := players_vbox.get_children()
 	for panel in panels:
 		players_vbox.remove_child(panel)
@@ -174,6 +176,8 @@ func update_intervals() -> void:
 
 
 func update_intervals_to_plid(reference_plid: int) -> void:
+	if relative_times.times.is_empty():
+		return
 	var sorted_drivers := relative_times.sort_drivers_by_proximity(reference_plid)
 	var target_driver: RelativeTimes.DriverTimes = null
 	for driver in sorted_drivers:
