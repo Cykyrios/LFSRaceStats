@@ -688,6 +688,7 @@ func _on_pll_received(packet: InSimPLLPacket) -> void:
 	Logger.log_message("%s spectated or was removed." % \
 			[LFSText.strip_colors(player.nickname)])
 	map.remove_arrow_by_plid(plid)
+	relative_times.remove_driver(plid)
 
 
 func _on_plp_received(packet: InSimPLPPacket) -> void:
