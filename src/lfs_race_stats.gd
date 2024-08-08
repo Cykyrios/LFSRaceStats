@@ -17,6 +17,11 @@ var insim_buttons_num_cars := 0
 var categories: Array[Array] = []
 var category_colors: Array[LFSText.ColorCode] = []
 
+var interval_color_lapping := LFSText.ColorCode.CYAN
+var interval_color_front := LFSText.ColorCode.RED
+var interval_color_behind := LFSText.ColorCode.GREEN
+var interval_color_lapped := LFSText.ColorCode.MAGENTA
+
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
 @onready var players_vbox := %PlayersVBox
@@ -291,8 +296,10 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 		label.text += "\t%s" % [interval_string] + (" (%s)" % [lapping_string] if lapping else "")
 		if show_insim_buttons:
 			fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4,
-					"^%d%s" % [6 if lap_difference < 0 else 5 if lap_difference > 0 \
-					else 1 if idx < target_idx else 2, interval_string]
+					"^%d%s" % [interval_color_lapping if lap_difference < 0 \
+					else interval_color_lapped if lap_difference > 0 \
+					else interval_color_front if idx < target_idx else interval_color_behind,
+					interval_string]
 					+ (" (%s)" % [lapping_string] if lapping else ""))
 
 
