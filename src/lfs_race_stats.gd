@@ -14,6 +14,8 @@ var relative_cars := 7
 var show_insim_buttons := true
 var insim_button_idx := 0
 var insim_buttons_num_cars := 0
+var categories: Array[Array] = []
+var category_colors: Array[LFSText.ColorCode] = []
 
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
@@ -184,6 +186,16 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 		if driver.plid == reference_plid:
 			target_driver = driver
 			break
+	var standings := relative_times.sort_drivers_by_position()
+	var class_positions: Array[int] = []
+	for category in categories:
+		class_positions.append(0)
+	for driver in standings:
+		for i in categories.size():
+			if driver.car in categories[i]:
+				driver.category = i
+				class_positions[i] += 1
+				driver.class_position = class_positions[i]
 	var total_cars := sorted_drivers.size()
 	var half_relative_cars := floori(relative_cars / 2.0)
 	var max_cars := half_relative_cars * 2 + 1
@@ -226,6 +238,9 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 				if show_insim_buttons:
 					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 1,
 							"%s%s" % ["^7" if plid == target_plid else "", str(driver.position)])
+					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 2,
+							"^%d%s" % [LFSText.ColorCode.DEFAULT if driver.category < 0 \
+							else category_colors[driver.category], str(driver.class_position)])
 					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 3, player.nickname)
 				break
 	for panel in panels:

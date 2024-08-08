@@ -11,6 +11,11 @@ var nodes: Array[int] = []
 var times: Array[DriverTimes] = []
 
 
+func add_driver(player: Player) -> void:
+	var driver_times := DriverTimes.new(player.plid, player.car, nodes.size())
+	times.append(driver_times)
+
+
 func clear_times() -> void:
 	times.clear()
 
@@ -59,8 +64,7 @@ func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
 func reinitialize(players: Array[Player]) -> void:
 	times.clear()
 	for player in players:
-		var driver_times := DriverTimes.new(player.plid, nodes.size())
-		times.append(driver_times)
+		add_driver(player)
 
 
 func remove_driver(plid: int) -> void:
@@ -153,13 +157,17 @@ func update_time(plid: int, position: int, lap: int, node: int, time: float) -> 
 
 class DriverTimes extends RefCounted:
 	var plid := 0
+	var car := ""
 	var position := 0
+	var category := -1
+	var class_position := 0
 	var lap := 0
 	var times: Array[float] = []
 	var last_updated_index := -1
 
-	func _init(driver_plid: int, size: int) -> void:
+	func _init(driver_plid: int, driven_car: String, size: int) -> void:
 		plid = driver_plid
+		car = driven_car
 		times.clear()
 		var _discard := times.resize(size)
 
