@@ -1,0 +1,24 @@
+race stats InSim app
++ keep a PLID list for cars as well as a UCID list (from NCN packets)
+* get SPX and LAP packets to update lap counts, times, etc., can also be used to correct driver positions?
+* get PLA, PIT, PSF and other pitlane/pitting packets to keep track of pit counts, show drivers in pits on map (see below for map)
+* get FLG packets to display yellow/blue flags on minimap (keep track of a stack of flags for each driver as one car can trigger multiple FLG packets)
++ get MCI packets for minimap
+* get FIN and RES packets for race results
+* request list of NPL at race start + get new NPL packets for car info (at least tyre compounds)
+- driver data: add starting position/rank, add ability to remove safety car in front (maybe automatically through car name)
+- race setup: set car classes if applicable, safety/rescue cars, etc.
+- minimap:
+	+ draw dots/arrows for cars on top of track picture
+	+ update positions from MCI packets
+	- show driver names next to dots/arrows
+	- color code lapping/lapped, and by car class if applicable
+- standings:
+	- position, car number, car, driver name
+	- only possible from outside InSim: color code by class
+	- optional, only possible from outside InSim: team name
+	- try to smooth position (rank) changes in case MCI packets have too much noise or are not in order
+	- show pit status when in pitlane
+	- if possible, show tyre compounds
+- delta to drivers in front and behind (2-3 in each direction) -> probably won't show lapping/lapped cars
++ write events to log file

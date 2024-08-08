@@ -10,17 +10,18 @@ var drivers: Array[Driver] = []
 var relative_times := RelativeTimes.new()
 var current_time := 0.0
 var target_plid := 0
-var relative_cars := 7
+@export var relative_cars := 7
 var show_insim_buttons := true
 var insim_button_idx := 0
 var insim_buttons_num_cars := 0
-var categories: Array[Array] = []
-var category_colors: Array[LFSText.ColorCode] = []
+var categories: Array[Array] = [["BF1"], ["XFR"], ["FZ5", "RAC"], ["XRG", "XFG"], ["UF1"]]
+var category_colors: Array[LFSText.ColorCode] = [LFSText.ColorCode.MAGENTA, LFSText.ColorCode.CYAN,
+		LFSText.ColorCode.GREEN, LFSText.ColorCode.YELLOW, LFSText.ColorCode.RED]
 
-var interval_color_lapping := LFSText.ColorCode.CYAN
-var interval_color_front := LFSText.ColorCode.RED
-var interval_color_behind := LFSText.ColorCode.GREEN
-var interval_color_lapped := LFSText.ColorCode.MAGENTA
+@export var interval_color_lapping := LFSText.ColorCode.CYAN
+@export var interval_color_front := LFSText.ColorCode.RED
+@export var interval_color_behind := LFSText.ColorCode.GREEN
+@export var interval_color_lapped := LFSText.ColorCode.MAGENTA
 
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
@@ -67,8 +68,8 @@ func add_insim_relative_buttons(num_cars: int) -> void:
 	var total_width := overall_pos_width + class_pos_width + driver_name_width + interval_width \
 			+ 3 * spacing + 2 * margin
 	var total_height := (num_cars + 1) * button_height + num_cars * spacing + 2 * margin
-	var origin_left := InSim.ButtonPosition.X_MIN + 1
-	var origin_top := InSim.ButtonPosition.Y_MAX - total_height - 5
+	var origin_left := InSim.ButtonPosition.X_MIN + 1 + 33
+	var origin_top := InSim.ButtonPosition.Y_MAX - total_height - 5 + 20
 	insim.send_packet(add_button.call(0, origin_left, origin_top, total_width, total_height,
 			InSim.ButtonStyle.ISB_LIGHT) as InSimBTNPacket)
 	for i in num_cars + 1:
@@ -195,12 +196,16 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 	var class_positions: Array[int] = []
 	for category in categories:
 		class_positions.append(0)
+	var target_category := -1
 	for driver in standings:
 		for i in categories.size():
 			if driver.car in categories[i]:
 				driver.category = i
 				class_positions[i] += 1
 				driver.class_position = class_positions[i]
+				if driver == target_driver:
+					target_category = i
+				break
 	var total_cars := sorted_drivers.size()
 	var half_relative_cars := floori(relative_cars / 2.0)
 	var max_cars := half_relative_cars * 2 + 1
@@ -332,6 +337,7 @@ func connect_signals() -> void:
 	_discard = insim.small_rtp_received.connect(_on_small_rtp_received)
 	_discard = insim.small_vta_received.connect(_on_small_vta_received)
 	_discard = insim.tiny_ren_received.connect(_on_tiny_ren_received)
+	_discard = insim.isp_iii_received.connect(_on_iii_received)
 	_discard = insim.packet_received.connect(_on_packet_received)
 	_discard = insim.connected.connect(_on_insim_connected)
 
@@ -646,6 +652,15 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 		map.add_arrow(compcar)
 		map_arrow = map.get_arrow_by_plid(player.plid)
 	map_arrow.visible = true
+	var arrow_color := Color.GREEN
+	match packet.car_name:
+		"BF1":
+			arrow_color = Color.PINK
+		"XRT":
+			arrow_color = Color.GOLD
+		"UF1":
+			arrow_color = Color.AQUA
+	map_arrow.set_color(arrow_color)
 
 
 func _on_pen_received(packet: InSimPENPacket) -> void:
@@ -665,6 +680,7 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 	var player := get_player_from_plid(plid)
 	if not player:
 		return
+	var driver
 	var lap: LapData = null
 	if player.laps.is_empty():
 		lap = LapData.new()
@@ -744,6 +760,9 @@ func _on_rst_received(packet: InSimRSTPacket) -> void:
 	relative_times.clear_times()
 	relative_times.initialize(packet, players)
 
+	for player in players:
+		print("%s (%s) - PLID %d" % [player.nickname, player.car, player.plid])
+
 
 func _on_slc_received(packet: InSimSLCPacket) -> void:
 	var connection := get_connection_from_ucid(packet.ucid)
@@ -801,6 +820,11 @@ func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
 	clear_insim_buttons()
 	map.remove_arrows()
 	Logger.log_message("Session ended.")
+
+
+func _on_iii_received(packet: InSimIIIPacket) -> void:
+	var message := "[%d/%d] %s" % [packet.plid, packet.ucid, LFSText.strip_colors(packet.msg)]
+	Logger.log_message(message)
 
 
 func _on_packet_received(packet: InSimPacket) -> void:
