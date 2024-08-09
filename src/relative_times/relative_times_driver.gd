@@ -10,7 +10,8 @@ var lap := 0
 var times: Array[float] = []
 var last_updated_index := -1
 
-var position := 0
+var lfs_position := 0
+var overall_position := 0
 var car_class: CarClass = null
 var class_position := 0
 
@@ -29,7 +30,8 @@ func clear() -> void:
 	car = ""
 	lap = 0
 	last_updated_index = -1
-	position = 0
+	lfs_position = 0
+	overall_position = 0
 	car_class = null
 	class_position = 0
 	var size := times.size()

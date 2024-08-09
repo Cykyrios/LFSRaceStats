@@ -5,6 +5,7 @@ extends Node
 signal reinitialization_requested
 
 const PTH_STEP := 1
+const HIDDEN_CLASS_NAME := "hidden"
 
 var nodes: Array[int] = []
 var times: Array[RelativeTimesDriver] = []
@@ -96,7 +97,7 @@ func show_insim_buttons() -> void:
 func sort_drivers_by_position() -> Array[RelativeTimesDriver]:
 	var sorted_drivers: Array[RelativeTimesDriver] = times.duplicate() as Array[RelativeTimesDriver]
 	sorted_drivers.sort_custom(func(a: RelativeTimesDriver, b: RelativeTimesDriver) -> bool:
-		return a.position < b.position)
+		return a.lfs_position < b.lfs_position)
 	return sorted_drivers
 
 
@@ -154,9 +155,9 @@ func update_car_classes(categories: Array[CarClass]) -> void:
 func update_position(plid: int, position: int) -> void:
 	for driver in times:
 		if driver.plid == plid:
-			driver.position = position
+			driver.lfs_position = position
 			for d in times:
-				if d.position == position and d.plid != plid:
+				if d.lfs_position == position and d.plid != plid:
 					update_position(d.plid, position + 1)
 					break
 			return
@@ -227,15 +228,24 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 	var class_positions: Array[int] = []
 	for category in car_classes:
 		class_positions.append(0)
+	var position_offset := 0
 	for driver in standings:
 		driver.car_class = null
 		driver.class_position = 0
+		var hidden_car := false
 		for i in car_classes.size():
 			if driver.car in car_classes[i].cars:
 				driver.car_class = car_classes[i]
 				class_positions[i] += 1
 				driver.class_position = class_positions[i]
+				if car_classes[i].name == HIDDEN_CLASS_NAME:
+					hidden_car = true
+					driver.class_position = 0
+					position_offset -= 1
+					driver.overall_position = 0
 				break
+		if not hidden_car:
+			driver.overall_position = driver.lfs_position + position_offset
 	var total_cars := sorted_drivers.size()
 	var half_relative_cars := floori(relative_cars / 2.0)
 	var max_cars := half_relative_cars * 2 + 1
@@ -303,9 +313,10 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			driver_front = target_driver
 			driver_back = target_driver
 		var lapping := false
+		var position_difference := driver_back.overall_position - driver_front.overall_position
 		if (
-			absi(idx - target_idx) < absi(driver_back.position - driver_front.position)
-			or absi(idx - target_idx) == -absi(driver_back.position - driver_front.position)
+			absi(idx - target_idx) < absi(position_difference)
+			or absi(idx - target_idx) == -absi(position_difference)
 		):
 			lapping = true
 		lap_difference = driver_front.lap - driver_back.lap
@@ -333,11 +344,14 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 			continue
 		var driver := sorted_drivers[idx]
 		var plid := driver.plid
+		var hidden_class := true if driver.car_class \
+				and driver.car_class.name == HIDDEN_CLASS_NAME else false
 		insim_buttons.update_driver_info(
 			displayed_cars - i,
-			"%s%s" % ["^7" if plid == reference_plid else "", str(driver.position)],
-			"" if not driver.car_class else "^%d%s" % [driver.car_class.insim_color,
-					str(driver.class_position)],
+			"%s%s" % ["^7" if plid == reference_plid else "",
+					str(driver.overall_position) if not hidden_class else "-"],
+			"-" if hidden_class or not driver.car_class else \
+					"^%d%s" % [driver.car_class.insim_color, str(driver.class_position)],
 			driver.car,
 			driver.name,
 			insim_buttons.UNKNOWN_INTERVAL_STRING if driver_front == driver_back else
