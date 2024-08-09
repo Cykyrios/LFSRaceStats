@@ -489,6 +489,7 @@ func _on_rst_received(packet: InSimRSTPacket) -> void:
 	await request_connection_player_list()
 	if packet.req_i == 0:
 		Logger.log_message("Session started.")
+		relative_times.show_insim_buttons()
 	insim.send_packet(InSimTinyPacket.new(1, InSim.Tiny.TINY_NPL))
 	map.set_background(packet.track)
 	relative_times.clear_times()
