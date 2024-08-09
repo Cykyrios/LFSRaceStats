@@ -4,20 +4,34 @@ extends Node
 
 signal reinitialization_requested
 
-const MAX_CARS_IN_RACE := 40
 const PTH_STEP := 1
 
 var nodes: Array[int] = []
-var times: Array[DriverTimes] = []
+var times: Array[RelativeTimesDriver] = []
+var proximity_threshold := 0.5
+var car_classes: Array[CarClass] = []
+
+var relative_cars := 7
+
+var insim_buttons: InSimRelativeTimes = null
 
 
 func add_driver(player: Player) -> void:
-	var driver_times := DriverTimes.new(player.plid, player.car, nodes.size())
+	var driver_times := RelativeTimesDriver.new(player.plid, player.nickname,
+			player.car, nodes.size())
 	times.append(driver_times)
+
+
+func clear_insim_buttons() -> void:
+	insim_buttons.clear_buttons()
 
 
 func clear_times() -> void:
 	times.clear()
+
+
+func create_insim_buttons(insim_instance: InSim) -> void:
+	insim_buttons = InSimRelativeTimes.new(insim_instance)
 
 
 func initialize(packet: InSimRSTPacket, players: Array[Player]) -> void:
@@ -75,22 +89,26 @@ func remove_driver(plid: int) -> void:
 			return
 
 
-func sort_drivers_by_position() -> Array[DriverTimes]:
-	var sorted_drivers: Array[DriverTimes] = times.duplicate() as Array[DriverTimes]
-	sorted_drivers.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+func show_insim_buttons() -> void:
+	insim_buttons.show_buttons(0)
+
+
+func sort_drivers_by_position() -> Array[RelativeTimesDriver]:
+	var sorted_drivers: Array[RelativeTimesDriver] = times.duplicate() as Array[RelativeTimesDriver]
+	sorted_drivers.sort_custom(func(a: RelativeTimesDriver, b: RelativeTimesDriver) -> bool:
 		return a.position < b.position)
 	return sorted_drivers
 
 
-func sort_drivers_by_proximity(reference_plid: int) -> Array[DriverTimes]:
-	var reference_driver: DriverTimes = null
+func sort_drivers_by_proximity(reference_plid: int) -> Array[RelativeTimesDriver]:
+	var reference_driver: RelativeTimesDriver = null
 	for driver in times:
 		if driver.plid == reference_plid:
 			reference_driver = driver
 			break
-	var drivers_in_front: Array[DriverTimes] = []
-	var drivers_behind: Array[DriverTimes] = []
-	var half_count := nodes.size() / 2.0
+	var drivers_in_front: Array[RelativeTimesDriver] = []
+	var drivers_behind: Array[RelativeTimesDriver] = []
+	var threshold := nodes.size() * proximity_threshold
 	var reference_idx := reference_driver.last_updated_index
 	for driver in times:
 		if driver == reference_driver:
@@ -98,13 +116,13 @@ func sort_drivers_by_proximity(reference_plid: int) -> Array[DriverTimes]:
 		var idx := driver.last_updated_index
 		var difference := idx - reference_idx
 		var abs_difference := absi(difference)
-		var behind := true if (difference < 0 and abs_difference < half_count
-		or difference > 0 and abs_difference > half_count) else false
+		var behind := true if (difference < 0 and abs_difference < threshold
+				or difference > 0 and abs_difference > nodes.size() - threshold) else false
 		if behind:
 			drivers_behind.append(driver)
 		else:
 			drivers_in_front.append(driver)
-	drivers_behind.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+	drivers_behind.sort_custom(func(a: RelativeTimesDriver, b: RelativeTimesDriver) -> bool:
 		var difference_a := a.last_updated_index - reference_driver.last_updated_index
 		var difference_b := b.last_updated_index - reference_driver.last_updated_index
 		if difference_a > 0:
@@ -113,7 +131,7 @@ func sort_drivers_by_proximity(reference_plid: int) -> Array[DriverTimes]:
 			difference_b -= nodes.size()
 		return difference_a > difference_b
 	)
-	drivers_in_front.sort_custom(func(a: DriverTimes, b: DriverTimes) -> bool:
+	drivers_in_front.sort_custom(func(a: RelativeTimesDriver, b: RelativeTimesDriver) -> bool:
 		var difference_a := a.last_updated_index - reference_driver.last_updated_index
 		var difference_b := b.last_updated_index - reference_driver.last_updated_index
 		if difference_a < 0:
@@ -122,11 +140,15 @@ func sort_drivers_by_proximity(reference_plid: int) -> Array[DriverTimes]:
 			difference_b += nodes.size()
 		return difference_a > difference_b
 	)
-	var sorted_drivers: Array[DriverTimes] = []
+	var sorted_drivers: Array[RelativeTimesDriver] = []
 	sorted_drivers.append_array(drivers_in_front)
 	sorted_drivers.append(reference_driver)
 	sorted_drivers.append_array(drivers_behind)
 	return sorted_drivers
+
+
+func update_car_classes(categories: Array[CarClass]) -> void:
+	car_classes = categories.duplicate()
 
 
 func update_position(plid: int, position: int) -> void:
@@ -155,24 +177,173 @@ func update_time(plid: int, position: int, lap: int, node: int, time: float) -> 
 	reinitialization_requested.emit()
 
 
-class DriverTimes extends RefCounted:
-	var plid := 0
-	var car := ""
-	var position := 0
-	var category := -1
-	var class_position := 0
-	var lap := 0
-	var times: Array[float] = []
-	var last_updated_index := -1
+func update_gaps_between_cars() -> void:
+	if times.is_empty():
+		return
+	#var panels := players_vbox.get_children()
+	#for panel in panels:
+		#players_vbox.remove_child(panel)
+	#for driver in times:
+		#var plid := driver.plid
+		#for panel in panels:
+			#var label := panel.get_child(0) as RichTextLabel
+			#if label.get_meta("plid", 0) == plid:
+				#players_vbox.add_child(panel)
+				#var player := get_player_from_plid(plid)
+				#label.text = "%s (PLID %d, UCID %d) - node %d" % \
+						#[LFSText.lfs_colors_to_bbcode(player.nickname),
+						#player.plid, player.ucid, nodes[driver.last_updated_index]]
+				#break
+	for i in times.size():
+		var idx := times.size() - 1 - i
+		if idx == 0:
+			return
+		var driver := times[idx]
+		var driver_in_front := times[idx - 1]
+		var lap_difference := driver_in_front.lap - driver.lap
+		if (
+			driver_in_front.last_updated_index == nodes.size() - 1
+			or driver.last_updated_index > driver_in_front.last_updated_index
+			and driver.last_updated_index != nodes.size() - 1
+		):
+			lap_difference -= 1
+		var difference := driver.times[driver.last_updated_index] \
+				- driver_in_front.times[driver.last_updated_index]
+		#var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
+		#label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
+				#"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
 
-	func _init(driver_plid: int, driven_car: String, size: int) -> void:
-		plid = driver_plid
-		car = driven_car
-		times.clear()
-		var _discard := times.resize(size)
 
-	func clear() -> void:
-		plid = 0
-		var size := times.size()
-		times.clear()
-		var _discard := times.resize(size)
+func update_intervals_to_plid(reference_plid: int) -> void:
+	if times.is_empty():
+		return
+	var sorted_drivers := sort_drivers_by_proximity(reference_plid)
+	var target_driver: RelativeTimesDriver = null
+	for driver in sorted_drivers:
+		if driver.plid == reference_plid:
+			target_driver = driver
+			break
+	var standings := sort_drivers_by_position()
+	var class_positions: Array[int] = []
+	for category in car_classes:
+		class_positions.append(0)
+	for driver in standings:
+		driver.car_class = null
+		driver.class_position = 0
+		for i in car_classes.size():
+			if driver.car in car_classes[i].cars:
+				driver.car_class = car_classes[i]
+				class_positions[i] += 1
+				driver.class_position = class_positions[i]
+				break
+	var total_cars := sorted_drivers.size()
+	var half_relative_cars := floori(relative_cars / 2.0)
+	var max_cars := half_relative_cars * 2 + 1
+	var target_idx := sorted_drivers.find(target_driver)
+	var first_idx := target_idx - floori(max_cars / 2.0)
+	var last_idx := target_idx + floori(max_cars / 2.0)
+	if max_cars >= total_cars:
+		first_idx = 0
+		last_idx = total_cars - 1
+	elif first_idx < 0:
+		var offset := -first_idx
+		first_idx += offset
+		last_idx += offset
+	elif last_idx >= total_cars:
+		var offset := last_idx - total_cars + 1
+		first_idx -= offset
+		last_idx -= offset
+	var displayed_cars := last_idx - first_idx + 1
+	if insim_buttons.buttons_enabled and displayed_cars != insim_buttons.buttons_num_cars:
+		insim_buttons.clear_buttons()
+		insim_buttons.initialize_buttons(displayed_cars)
+		insim_buttons.buttons_num_cars = displayed_cars
+	#var panels: Array[PanelContainer] = []
+	#panels.assign(players_vbox.get_children())
+	#for panel in panels:
+		#panel.visible = false
+		#players_vbox.remove_child(panel)
+	#for i in displayed_cars:
+		#var idx := first_idx + i
+		#var driver := sorted_drivers[idx]
+		#var plid := driver.plid
+		#for panel in panels:
+			#var label := panel.get_child(0) as RichTextLabel
+			#if label.get_meta("plid", 0) == plid:
+				#panel.visible = true
+				#players_vbox.add_child(panel)
+				#var player := get_player_from_plid(plid)
+				#label.text = "%-3d\t%-24s" % [driver.position,
+						#LFSText.lfs_colors_to_bbcode(player.nickname)]
+				#if not insim_buttons.buttons_enabled:
+					#break
+				#insim_buttons.update_button_text(insim_buttons.first_button_idx + (i + 1) * 4 + 1,
+						#"%s%s" % ["^7" if plid == reference_plid else "", str(driver.position)])
+				#insim_buttons.update_button_text(insim_buttons.first_button_idx + (i + 1) * 4 + 2,
+						#"^%d%s" % [LFSText.ColorCode.DEFAULT if not driver.car_class \
+						#else driver.car_class.insim_color, str(driver.class_position)])
+				#insim_buttons.update_button_text(insim_buttons.first_button_idx + (i + 1) * 4 + 3, player.nickname)
+				#break
+	#for panel in panels:
+		#if not panel.get_parent():
+			#players_vbox.add_child(panel)
+	for i in displayed_cars:
+		var idx := last_idx - i
+		var driver_front: RelativeTimesDriver = null
+		var driver_back: RelativeTimesDriver = null
+		var lap_difference := 0
+		var time_difference := 0.0
+		if idx > target_idx:
+			driver_front = target_driver
+			driver_back = sorted_drivers[idx]
+		elif idx < target_idx:
+			driver_front = sorted_drivers[idx]
+			driver_back = target_driver
+		else:
+			driver_front = target_driver
+			driver_back = target_driver
+		var lapping := false
+		if (
+			absi(idx - target_idx) < absi(driver_back.position - driver_front.position)
+			or absi(idx - target_idx) == -absi(driver_back.position - driver_front.position)
+		):
+			lapping = true
+		lap_difference = driver_front.lap - driver_back.lap
+		if (
+			driver_front.last_updated_index == nodes.size() - 1
+			or driver_back.last_updated_index > driver_front.last_updated_index
+			and driver_back.last_updated_index != nodes.size() - 1
+		):
+			lap_difference -= 1
+		if lap_difference != 0:
+			lapping = true
+		time_difference = driver_back.times[driver_back.last_updated_index] \
+				- driver_front.times[driver_back.last_updated_index]
+		if idx < target_idx:
+			lap_difference = -lap_difference
+			time_difference = -time_difference
+		var interval_string := "%s" % \
+				[GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]
+		var lapping_string := "%+dL" % [lap_difference]
+		if lapping and lap_difference == 0:
+			lapping = false
+		#var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
+		#label.text += "\t%s" % [interval_string] + (" (%s)" % [lapping_string] if lapping else "")
+		if not insim_buttons.buttons_enabled:
+			continue
+		var driver := sorted_drivers[idx]
+		var plid := driver.plid
+		insim_buttons.update_driver_info(
+			displayed_cars - i,
+			"%s%s" % ["^7" if plid == reference_plid else "", str(driver.position)],
+			"" if not driver.car_class else "^%d%s" % [driver.car_class.insim_color,
+					str(driver.class_position)],
+			driver.car,
+			driver.name,
+			insim_buttons.UNKNOWN_INTERVAL_STRING if driver_front == driver_back else
+					"^%d%s" % [insim_buttons.interval_color_lapping if lap_difference < 0 \
+					else insim_buttons.interval_color_lapped if lap_difference > 0 \
+					else insim_buttons.interval_color_front if idx < target_idx \
+					else insim_buttons.interval_color_behind, interval_string]
+					+ (" (%s)" % [lapping_string] if lapping else "")
+		)

@@ -10,17 +10,6 @@ var drivers: Array[Driver] = []
 var relative_times := RelativeTimes.new()
 var current_time := 0.0
 var target_plid := 0
-var relative_cars := 7
-var show_insim_buttons := true
-var insim_button_idx := 0
-var insim_buttons_num_cars := 0
-var categories: Array[Array] = []
-var category_colors: Array[LFSText.ColorCode] = []
-
-var interval_color_lapping := LFSText.ColorCode.CYAN
-var interval_color_front := LFSText.ColorCode.RED
-var interval_color_behind := LFSText.ColorCode.GREEN
-var interval_color_lapped := LFSText.ColorCode.MAGENTA
 
 @onready var map: Map = %Map as Map
 @onready var connections_vbox := %ConnectionsVBox
@@ -33,96 +22,12 @@ func _ready() -> void:
 	initialize_insim()
 
 	add_child(relative_times)
+	relative_times.create_insim_buttons(insim)
 	var _discard := relative_times.reinitialization_requested.connect(reinitialize_relative_times)
 	var timer := Timer.new()
 	_discard = timer.timeout.connect(update_intervals)
 	add_child(timer)
 	timer.start(1)
-
-
-func add_insim_relative_buttons(num_cars: int) -> void:
-	insim_buttons_num_cars = num_cars
-	show_insim_buttons = true
-	var add_button := func add_button(
-		id: int, left: int, top: int, width: int, height: int, button_style: int, text := ""
-	) -> InSimBTNPacket:
-		var packet := InSimBTNPacket.new()
-		packet.req_i = 1
-		packet.click_id = insim_button_idx + id
-		packet.left = left
-		packet.top = top
-		packet.width = width
-		packet.height = height
-		packet.button_style = button_style
-		packet.text = text
-		return packet
-	var fields_per_row := 4
-	var margin := 1
-	var spacing := 0
-	var button_height := 4
-	var overall_pos_width := 3
-	var class_pos_width := 3
-	var driver_name_width := 12
-	var interval_width := 7
-	var total_width := overall_pos_width + class_pos_width + driver_name_width + interval_width \
-			+ 3 * spacing + 2 * margin
-	var total_height := (num_cars + 1) * button_height + num_cars * spacing + 2 * margin
-	var origin_left := InSim.ButtonPosition.X_MIN + 1
-	var origin_top := InSim.ButtonPosition.Y_MAX - total_height - 5
-	insim.send_packet(add_button.call(0, origin_left, origin_top, total_width, total_height,
-			InSim.ButtonStyle.ISB_LIGHT) as InSimBTNPacket)
-	for i in num_cars + 1:
-		insim.send_packet(add_button.call(
-			i * fields_per_row + 1,
-			origin_left + margin,
-			origin_top + margin + i * (spacing + button_height),
-			overall_pos_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"P" if i == 0 else ""
-		) as InSimBTNPacket)
-		insim.send_packet(add_button.call(
-			i * fields_per_row + 2,
-			origin_left + margin + spacing * 1 + overall_pos_width,
-			origin_top + margin + i * (spacing + button_height),
-			class_pos_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"C" if i == 0 else ""
-		) as InSimBTNPacket)
-		insim.send_packet(add_button.call(
-			i * fields_per_row + 3,
-			origin_left + margin + spacing * 2 + overall_pos_width + class_pos_width,
-			origin_top + margin + i * (spacing + button_height),
-			driver_name_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"Driver" if i == 0 else ""
-		) as InSimBTNPacket)
-		insim.send_packet(add_button.call(
-			i * fields_per_row + 4,
-			origin_left + margin + spacing * 3 + overall_pos_width + class_pos_width + driver_name_width,
-			origin_top + margin + i * (spacing + button_height),
-			interval_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"Interval" if i == 0 else ""
-		) as InSimBTNPacket)
-
-
-func clear_insim_buttons() -> void:
-	var packet := InSimBFNPacket.new()
-	packet.subtype = InSim.ButtonFunction.BFN_CLEAR
-	insim.send_packet(packet)
-	show_insim_buttons = false
-
-
-func fill_in_insim_button(id: int, text: String) -> void:
-	var packet := InSimBTNPacket.new()
-	packet.req_i = 1
-	packet.click_id = id
-	packet.text = text
-	insim.send_packet(packet)
 
 
 func reinitialize_relative_times() -> void:
@@ -139,168 +44,14 @@ func request_connection_player_list() -> void:
 	await get_tree().process_frame
 
 
-func update_gaps_between_cars() -> void:
-	if relative_times.times.is_empty():
-		return
-	var panels := players_vbox.get_children()
-	for panel in panels:
-		players_vbox.remove_child(panel)
-	for driver in relative_times.times:
-		var plid := driver.plid
-		for panel in panels:
-			var label := panel.get_child(0) as RichTextLabel
-			if label.get_meta("plid", 0) == plid:
-				players_vbox.add_child(panel)
-				var player := get_player_from_plid(plid)
-				label.text = "%s (PLID %d, UCID %d) - node %d" % \
-						[LFSText.lfs_colors_to_bbcode(player.nickname),
-						player.plid, player.ucid, relative_times.nodes[driver.last_updated_index]]
-				break
-	for i in relative_times.times.size():
-		var idx := relative_times.times.size() - 1 - i
-		if idx == 0:
-			return
-		var driver := relative_times.times[idx]
-		var driver_in_front := relative_times.times[idx - 1]
-		var lap_difference := driver_in_front.lap - driver.lap
-		if (
-			driver_in_front.last_updated_index == relative_times.nodes.size() - 1
-			or driver.last_updated_index > driver_in_front.last_updated_index
-			and driver.last_updated_index != relative_times.nodes.size() - 1
-		):
-			lap_difference -= 1
-		var difference := driver.times[driver.last_updated_index] \
-				- driver_in_front.times[driver.last_updated_index]
-		var label := players_vbox.get_child(idx).get_child(0) as RichTextLabel
-		label.text += ": %s" % ["%+dL" % [lap_difference] if lap_difference != 0 else \
-				"%s" % [GISUtils.get_time_string_from_seconds(difference, 1, true, true)]]
+func update_gaps() -> void:
+	relative_times.update_gaps_between_cars()
 
 
 func update_intervals() -> void:
 	if players.is_empty() or not get_player_from_plid(target_plid):
 		return
-	update_intervals_to_plid(target_plid)
-
-
-func update_intervals_to_plid(reference_plid: int) -> void:
-	if relative_times.times.is_empty():
-		return
-	var sorted_drivers := relative_times.sort_drivers_by_proximity(reference_plid)
-	var target_driver: RelativeTimes.DriverTimes = null
-	for driver in sorted_drivers:
-		if driver.plid == reference_plid:
-			target_driver = driver
-			break
-	var standings := relative_times.sort_drivers_by_position()
-	var class_positions: Array[int] = []
-	for category in categories:
-		class_positions.append(0)
-	for driver in standings:
-		for i in categories.size():
-			if driver.car in categories[i]:
-				driver.category = i
-				class_positions[i] += 1
-				driver.class_position = class_positions[i]
-	var total_cars := sorted_drivers.size()
-	var half_relative_cars := floori(relative_cars / 2.0)
-	var max_cars := half_relative_cars * 2 + 1
-	var target_idx := sorted_drivers.find(target_driver)
-	var first_idx := target_idx - floori(max_cars / 2.0)
-	var last_idx := target_idx + floori(max_cars / 2.0)
-	if max_cars >= total_cars:
-		first_idx = 0
-		last_idx = total_cars - 1
-	elif first_idx < 0:
-		var offset := -first_idx
-		first_idx += offset
-		last_idx += offset
-	elif last_idx >= total_cars:
-		var offset := last_idx - total_cars + 1
-		first_idx -= offset
-		last_idx -= offset
-	var displayed_cars := last_idx - first_idx + 1
-	if show_insim_buttons and absi(displayed_cars - insim_buttons_num_cars) >= 1:
-		clear_insim_buttons()
-		add_insim_relative_buttons(displayed_cars)
-		insim_buttons_num_cars = displayed_cars
-	var panels: Array[PanelContainer] = []
-	panels.assign(players_vbox.get_children())
-	for panel in panels:
-		panel.visible = false
-		players_vbox.remove_child(panel)
-	for i in displayed_cars:
-		var idx := first_idx + i
-		var driver := sorted_drivers[idx]
-		var plid := driver.plid
-		for panel in panels:
-			var label := panel.get_child(0) as RichTextLabel
-			if label.get_meta("plid", 0) == plid:
-				panel.visible = true
-				players_vbox.add_child(panel)
-				var player := get_player_from_plid(plid)
-				label.text = "%-3d\t%-24s" % [driver.position,
-						LFSText.lfs_colors_to_bbcode(player.nickname)]
-				if show_insim_buttons:
-					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 1,
-							"%s%s" % ["^7" if plid == target_plid else "", str(driver.position)])
-					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 2,
-							"^%d%s" % [LFSText.ColorCode.DEFAULT if driver.category < 0 \
-							else category_colors[driver.category], str(driver.class_position)])
-					fill_in_insim_button(insim_button_idx + (i + 1) * 4 + 3, player.nickname)
-				break
-	for panel in panels:
-		if not panel.get_parent():
-			players_vbox.add_child(panel)
-	for i in displayed_cars:
-		var idx := last_idx - i
-		var driver_front: RelativeTimes.DriverTimes = null
-		var driver_back: RelativeTimes.DriverTimes = null
-		var lap_difference := 0
-		var time_difference := 0.0
-		if idx > target_idx:
-			driver_front = target_driver
-			driver_back = sorted_drivers[idx]
-		elif idx < target_idx:
-			driver_front = sorted_drivers[idx]
-			driver_back = target_driver
-		else:
-			if show_insim_buttons:
-				fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4, "---")
-			continue
-		var lapping := false
-		if (
-			absi(idx - target_idx) < absi(driver_back.position - driver_front.position)
-			or absi(idx - target_idx) == -absi(driver_back.position - driver_front.position)
-		):
-			lapping = true
-		lap_difference = driver_front.lap - driver_back.lap
-		if (
-			driver_front.last_updated_index == relative_times.nodes.size() - 1
-			or driver_back.last_updated_index > driver_front.last_updated_index
-			and driver_back.last_updated_index != relative_times.nodes.size() - 1
-		):
-			lap_difference -= 1
-		if lap_difference != 0:
-			lapping = true
-		time_difference = driver_back.times[driver_back.last_updated_index] \
-				- driver_front.times[driver_back.last_updated_index]
-		if idx < target_idx:
-			lap_difference = -lap_difference
-			time_difference = -time_difference
-		var interval_string := "%s" % \
-				[GISUtils.get_time_string_from_seconds(time_difference, 1, true, true)]
-		var lapping_string := "%+dL" % [lap_difference]
-		if lapping and lap_difference == 0:
-			lapping = false
-		var label := players_vbox.get_child(idx - first_idx).get_child(0) as RichTextLabel
-		label.text += "\t%s" % [interval_string] + (" (%s)" % [lapping_string] if lapping else "")
-		if show_insim_buttons:
-			fill_in_insim_button(insim_button_idx + (displayed_cars - i) * 4 + 4,
-					"^%d%s" % [interval_color_lapping if lap_difference < 0 \
-					else interval_color_lapped if lap_difference > 0 \
-					else interval_color_front if idx < target_idx else interval_color_behind,
-					interval_string]
-					+ (" (%s)" % [lapping_string] if lapping else ""))
+	relative_times.update_intervals_to_plid(target_plid)
 
 
 func connect_signals() -> void:
@@ -439,13 +190,12 @@ func _on_insim_connected() -> void:
 
 func _on_bfn_received(packet: InSimBFNPacket) -> void:
 	if packet.subtype == InSim.ButtonFunction.BFN_USER_CLEAR:
-		clear_insim_buttons()
+		relative_times.clear_insim_buttons()
 		var msl_packet := InSimMSLPacket.new()
 		msl_packet.msg = "InSim buttons disabled, press Shift+B to re-enable."
 		insim.send_packet(msl_packet)
 	elif packet.subtype == InSim.ButtonFunction.BFN_REQUEST:
-		show_insim_buttons = true
-		add_insim_relative_buttons(0)
+		relative_times.show_insim_buttons()
 
 
 func _on_cnl_received(packet: InSimCNLPacket) -> void:
@@ -798,7 +548,7 @@ func _on_small_vta_received(packet: InSimSmallPacket) -> void:
 
 
 func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
-	clear_insim_buttons()
+	relative_times.clear_insim_buttons()
 	map.remove_arrows()
 	Logger.log_message("Session ended.")
 
