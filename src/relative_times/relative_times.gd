@@ -13,6 +13,7 @@ var proximity_threshold := 0.5
 var car_classes: Array[CarClass] = []
 
 var relative_cars := 7
+var hidden_class_cars_displayed := true
 
 var insim_buttons: InSimRelativeTimes = null
 
@@ -229,6 +230,7 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 	for category in car_classes:
 		class_positions.append(0)
 	var position_offset := 0
+	var cars_to_remove: Array[RelativeTimesDriver] = []
 	for driver in standings:
 		driver.car_class = null
 		driver.class_position = 0
@@ -243,9 +245,14 @@ func update_intervals_to_plid(reference_plid: int) -> void:
 					driver.class_position = 0
 					position_offset -= 1
 					driver.overall_position = 0
+					cars_to_remove.append(driver)
 				break
 		if not hidden_car:
 			driver.overall_position = driver.lfs_position + position_offset
+	if not hidden_class_cars_displayed:
+		for driver in cars_to_remove:
+			standings.erase(driver)
+			sorted_drivers.erase(driver)
 	var total_cars := sorted_drivers.size()
 	var half_relative_cars := floori(relative_cars / 2.0)
 	var max_cars := half_relative_cars * 2 + 1
