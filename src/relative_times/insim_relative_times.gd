@@ -2,6 +2,7 @@ class_name InSimRelativeTimes
 extends Node
 
 
+const MAXIMUM_COLUMNS := 5
 const OVERALL_POS_COLUMN := 1
 const CLASS_POS_COLUMN := 2
 const CAR_COLUMN := 3
@@ -15,8 +16,16 @@ var first_button_idx := 0
 var buttons_num_cars := 0
 
 var buttons_enabled := true
+var class_position_visible := true:
+	set(value):
+		class_position_visible = value
+		update_fields_per_row()
+var car_visible := true:
+	set(value):
+		car_visible = value
+		update_fields_per_row()
 
-var fields_per_row := 5
+var fields_per_row := MAXIMUM_COLUMNS
 var margin := 1
 var button_height := 4
 var overall_pos_width := 3
@@ -60,7 +69,8 @@ func create_button(
 func initialize_buttons(num_cars: int) -> void:
 	buttons_num_cars = num_cars
 	buttons_enabled = true
-	var total_width := 2 * margin + overall_pos_width + class_pos_width + car_width \
+	var total_width := 2 * margin + overall_pos_width + \
+			(class_pos_width if class_position_visible else 0) + (car_width if car_visible else 0) \
 			+ driver_name_width + interval_width
 	var total_height := (num_cars + 1) * button_height + 2 * margin
 	var position_left := InSim.ButtonPosition.X_MIN + 1 + 33
@@ -68,6 +78,7 @@ func initialize_buttons(num_cars: int) -> void:
 	insim.send_packet(create_button(0, position_left, position_top, total_width, total_height,
 			InSim.ButtonStyle.ISB_LIGHT))
 	for i in num_cars + 1:
+		var id_offset := 0
 		var current_x_pos := margin
 		insim.send_packet(create_button(
 			i * fields_per_row + OVERALL_POS_COLUMN,
@@ -79,28 +90,34 @@ func initialize_buttons(num_cars: int) -> void:
 			"P" if i == 0 else ""
 		))
 		current_x_pos += overall_pos_width
+		if class_position_visible:
+			insim.send_packet(create_button(
+				i * fields_per_row + CLASS_POS_COLUMN,
+				position_left + current_x_pos,
+				position_top + margin + i * button_height,
+				class_pos_width,
+				button_height,
+				InSim.ButtonStyle.ISB_DARK,
+				"C" if i == 0 else ""
+			))
+			current_x_pos += class_pos_width
+		else:
+			id_offset += 1
+		if car_visible:
+			insim.send_packet(create_button(
+				i * fields_per_row + CAR_COLUMN - id_offset,
+				position_left + current_x_pos,
+				position_top + margin + i * button_height,
+				car_width,
+				button_height,
+				InSim.ButtonStyle.ISB_DARK,
+				"Car" if i == 0 else ""
+			))
+			current_x_pos += car_width
+		else:
+			id_offset += 1
 		insim.send_packet(create_button(
-			i * fields_per_row + CLASS_POS_COLUMN,
-			position_left + current_x_pos,
-			position_top + margin + i * button_height,
-			class_pos_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"C" if i == 0 else ""
-		))
-		current_x_pos += class_pos_width
-		insim.send_packet(create_button(
-			i * fields_per_row + CAR_COLUMN,
-			position_left + current_x_pos,
-			position_top + margin + i * button_height,
-			car_width,
-			button_height,
-			InSim.ButtonStyle.ISB_DARK,
-			"Car" if i == 0 else ""
-		))
-		current_x_pos += car_width
-		insim.send_packet(create_button(
-			i * fields_per_row + DRIVER_COLUMN,
+			i * fields_per_row + DRIVER_COLUMN - id_offset,
 			position_left + current_x_pos,
 			position_top + margin + i * button_height,
 			driver_name_width,
@@ -110,7 +127,7 @@ func initialize_buttons(num_cars: int) -> void:
 		))
 		current_x_pos += driver_name_width
 		insim.send_packet(create_button(
-			i * fields_per_row + INTERVAL_COLUMN,
+			i * fields_per_row + INTERVAL_COLUMN - id_offset,
 			position_left + current_x_pos,
 			position_top + margin + i * button_height,
 			interval_width,
@@ -139,7 +156,22 @@ func update_driver_info(
 	driver_name: String, interval := UNKNOWN_INTERVAL_STRING
 ) -> void:
 	update_button_text(row_idx * fields_per_row + OVERALL_POS_COLUMN, str(overall_pos))
-	update_button_text(row_idx * fields_per_row + CLASS_POS_COLUMN, str(class_pos))
-	update_button_text(row_idx * fields_per_row + CAR_COLUMN, car_name)
-	update_button_text(row_idx * fields_per_row + DRIVER_COLUMN, driver_name)
-	update_button_text(row_idx * fields_per_row + INTERVAL_COLUMN, interval)
+	var offset := 0
+	if class_position_visible:
+		update_button_text(row_idx * fields_per_row + CLASS_POS_COLUMN, str(class_pos))
+	else:
+		offset += 1
+	if car_visible:
+		update_button_text(row_idx * fields_per_row + CAR_COLUMN - offset, car_name)
+	else:
+		offset += 1
+	update_button_text(row_idx * fields_per_row + DRIVER_COLUMN - offset, driver_name)
+	update_button_text(row_idx * fields_per_row + INTERVAL_COLUMN - offset, interval)
+
+
+func update_fields_per_row() -> void:
+	fields_per_row = MAXIMUM_COLUMNS
+	if not class_position_visible:
+		fields_per_row -= 1
+	if not car_visible:
+		fields_per_row -= 1
