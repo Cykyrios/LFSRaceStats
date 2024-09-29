@@ -28,6 +28,46 @@ func _ready() -> void:
 	_discard = timer.timeout.connect(update_intervals)
 	add_child(timer)
 	timer.start(1)
+	#var car_classes: Array[CarClass] = []
+	#var car_class := CarClass.new()
+	#car_class.cars = ["BF1"]
+	#car_class.insim_color = LFSText.ColorCode.MAGENTA
+	#car_classes.append(car_class)
+	#car_class = CarClass.new()
+	#car_class.cars = ["XFR"]
+	#car_class.insim_color = LFSText.ColorCode.CYAN
+	#car_classes.append(car_class)
+	#car_class = CarClass.new()
+	#car_class.cars = ["FZ5", "RAC"]
+	#car_class.insim_color = LFSText.ColorCode.GREEN
+	#car_classes.append(car_class)
+	#car_class = CarClass.new()
+	#car_class.cars = ["XRG", "XFG"]
+	#car_class.insim_color = LFSText.ColorCode.YELLOW
+	#car_classes.append(car_class)
+	#car_class = CarClass.new()
+	#car_class.cars = ["UF1"]
+	#car_class.insim_color = LFSText.ColorCode.RED
+	#car_classes.append(car_class)
+	#car_class = CarClass.new()
+	#car_class.name = "hidden"
+	#car_class.cars = ["39CEEB"]
+	#car_classes.append(car_class)
+	var car_classes: Array[CarClass] = []
+	var car_class := CarClass.new()
+	car_class = CarClass.new()
+	car_class.cars = ["8A8457"]
+	car_class.insim_color = LFSText.ColorCode.RED
+	car_classes.append(car_class)
+	car_class = CarClass.new()
+	car_class.cars = ["898A50", "172CB8", "F0411E", "FAC497", "2A4588"]
+	car_class.insim_color = LFSText.ColorCode.CYAN
+	car_classes.append(car_class)
+	car_class = CarClass.new()
+	car_class.name = "hidden"
+	car_class.cars = ["39CEEB"]
+	car_classes.append(car_class)
+	relative_times.update_car_classes(car_classes)
 
 
 func reinitialize_relative_times() -> void:
@@ -83,6 +123,7 @@ func connect_signals() -> void:
 	_discard = insim.small_rtp_received.connect(_on_small_rtp_received)
 	_discard = insim.small_vta_received.connect(_on_small_vta_received)
 	_discard = insim.tiny_ren_received.connect(_on_tiny_ren_received)
+	_discard = insim.isp_iii_received.connect(_on_iii_received)
 	_discard = insim.packet_received.connect(_on_packet_received)
 	_discard = insim.connected.connect(_on_insim_connected)
 
@@ -396,6 +437,15 @@ func _on_npl_received(packet: InSimNPLPacket) -> void:
 		map.add_arrow(compcar)
 		map_arrow = map.get_arrow_by_plid(player.plid)
 	map_arrow.visible = true
+	var arrow_color := Color.GREEN
+	match packet.car_name:
+		"BF1":
+			arrow_color = Color.PINK
+		"XRT":
+			arrow_color = Color.GOLD
+		"UF1":
+			arrow_color = Color.AQUA
+	map_arrow.set_color(arrow_color)
 
 
 func _on_pen_received(packet: InSimPENPacket) -> void:
@@ -415,6 +465,7 @@ func _on_pla_received(packet: InSimPLAPacket) -> void:
 	var player := get_player_from_plid(plid)
 	if not player:
 		return
+	var driver
 	var lap: LapData = null
 	if player.laps.is_empty():
 		lap = LapData.new()
@@ -495,6 +546,9 @@ func _on_rst_received(packet: InSimRSTPacket) -> void:
 	relative_times.clear_times()
 	relative_times.initialize(packet, players)
 
+	for player in players:
+		print("%s (%s) - PLID %d" % [player.nickname, player.car, player.plid])
+
 
 func _on_slc_received(packet: InSimSLCPacket) -> void:
 	var connection := get_connection_from_ucid(packet.ucid)
@@ -552,6 +606,11 @@ func _on_tiny_ren_received(_packet: InSimTinyPacket) -> void:
 	relative_times.clear_insim_buttons()
 	map.remove_arrows()
 	Logger.log_message("Session ended.")
+
+
+func _on_iii_received(packet: InSimIIIPacket) -> void:
+	var message := "[%d/%d] %s" % [packet.plid, packet.ucid, LFSText.strip_colors(packet.msg)]
+	Logger.log_message(message)
 
 
 func _on_packet_received(packet: InSimPacket) -> void:

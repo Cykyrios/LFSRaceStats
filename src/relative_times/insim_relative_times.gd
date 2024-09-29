@@ -146,7 +146,7 @@ func show_buttons(num_cars: int) -> void:
 func update_button_text(id: int, text: String) -> void:
 	var packet := InSimBTNPacket.new()
 	packet.req_i = 1
-	packet.click_id = id
+	packet.click_id = first_button_idx + id
 	packet.text = text
 	insim.send_packet(packet)
 

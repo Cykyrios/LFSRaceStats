@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3 uid="uid://c5s72pgx2xx66"]
+
+[ext_resource type="Theme" uid="uid://dt7qbif7icshf" path="res://src/standings/standings_theme.tres" id="1_l0bpk"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_om6d2"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+expand_margin_left = 4.0
+expand_margin_right = 4.0
+
+[node name="StandingsDriver" type="HBoxContainer"]
+offset_right = 431.0
+offset_bottom = 28.0
+size_flags_horizontal = 2
+theme = ExtResource("1_l0bpk")
+theme_override_constants/separation = 10
+
+[node name="PositionLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "20"
+horizontal_alignment = 1
+
+[node name="ClassLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_om6d2")
+horizontal_alignment = 1
+
+[node name="CarLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "AAAAAA"
+horizontal_alignment = 1
+
+[node name="DriverLabel" type="RichTextLabel" parent="."]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "The Super Cyk"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+shortcut_keys_enabled = false
+
+[node name="IntervalLabel" type="RichTextLabel" parent="."]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "+5:09.9"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+shortcut_keys_enabled = false
